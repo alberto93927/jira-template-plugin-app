@@ -1,0 +1,62 @@
+app:
+  runtime:
+    name: nodejs22.x
+    memoryMB: 256
+    architecture: arm64
+  id: ari:cloud:ecosystem::app/b6bf3657-5548-4b16-87f7-22af6aed136b
+
+modules:
+  jira:issueAction:
+    - key: tmpl-apply
+      title: Apply template…
+      resource: main
+      resolver: { function: resolver }
+      render: native
+    - key: tmpl-save
+      title: Save as template…
+      resource: main
+      resolver: { function: resolver }
+      render: native
+
+  jira:projectPage:
+    - key: tmpl-project-library
+      title: Team Template Library
+      resource: main
+      resolver: { function: resolver }
+      render: native
+
+  jira:projectSettingsPage:
+    - key: tmpl-project-settings
+      title: Template Settings
+      resource: main
+      resolver: { function: resolver }
+      render: native
+
+  # jira:uiModifications:
+  #   - key: tmpl-uim
+  #     title: Template fill during Create
+  #     resource: uim-bundle
+
+  # jira:customField:
+  #   - key: tmpl-picker
+  #     name: Template
+  #     description: Pick a template to prefill fields
+  #     type: string
+  #     readOnly: false
+  #     view:
+  #       resource: main
+  #       render: native
+
+  function:
+    - key: resolver
+      handler: index.handler
+
+resources:
+  - key: main
+    path: src/frontend/index.jsx
+
+permissions:
+  scopes:
+    - read:jira-work
+    - write:jira-work
+    - storage:app
