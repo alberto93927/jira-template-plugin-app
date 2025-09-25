@@ -32,31 +32,36 @@ modules:
       resolver: { function: resolver }
       render: native
 
-  # jira:uiModifications:
-  #   - key: tmpl-uim
-  #     title: Template fill during Create
-  #     resource: uim-bundle
+  jira:uiModifications:
+    - key: tmpl-uim
+      title: Template fill during Create
+      resource: uim-bundle
 
-  # jira:customField:
-  #   - key: tmpl-picker
-  #     name: Template
-  #     description: Pick a template to prefill fields
-  #     type: string
-  #     readOnly: false
-  #     view:
-  #       resource: main
-  #       render: native
+  jira:customField:
+    - key: tmpl-picker
+      name: Template
+      description: Pick a template to prefill fields
+      type: string
+      readOnly: false
+      view:
+        resource: main
+        render: native
 
   function:
     - key: resolver
-      handler: index.handler
+      handler: resolvers/index.handler
 
 resources:
   - key: main
     path: src/frontend/index.jsx
+  - key: uim-bundle
+    path: static/uim/dist 
 
 permissions:
   scopes:
     - read:jira-work
     - write:jira-work
     - storage:app
+    # - read:user:jira
+    # - read:issue-type:jira
+    # - read:project:jira
