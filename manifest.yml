@@ -55,13 +55,14 @@ resources:
   - key: main
     path: src/frontend/index.jsx
   - key: uim-bundle
-    path: static/uim/dist 
+    path: static/uim/dist
 
 permissions:
   scopes:
     - read:jira-work
     - write:jira-work
     - storage:app
+    - write:app-data:jira
     # - read:user:jira
     # - read:issue-type:jira
     # - read:project:jira
