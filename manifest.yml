@@ -61,8 +61,8 @@ permissions:
   scopes:
     - read:jira-work
     - write:jira-work
-    - storage:app
+    - read:project:jira
+    - read:issue-type:jira
+    - read:app-data:jira
     - write:app-data:jira
-    # - read:user:jira
-    # - read:issue-type:jira
-    # - read:project:jira
+    - storage:app
