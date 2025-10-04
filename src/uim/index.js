@@ -1,3 +1,4 @@
+// File path: src/uim/index.js
 import { uiModificationsApi } from '@forge/jira-bridge';
 
 uiModificationsApi.onInit(async ({ api, context }) => {

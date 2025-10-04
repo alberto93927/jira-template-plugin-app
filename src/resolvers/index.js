@@ -1,3 +1,4 @@
+// File path: src/resolvers/index.js
 import Resolver from '@forge/resolver';
 import api, { route } from '@forge/api';
 
