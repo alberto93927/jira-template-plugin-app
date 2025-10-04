@@ -33,7 +33,7 @@ modules:
       render: native
 
   jira:uiModifications:
-    - key: tmpl-uim
+    - key: tmpl-create-uim
       title: Template fill during Create
       resource: uim-bundle
 
@@ -66,3 +66,4 @@ permissions:
     - read:app-data:jira
     - write:app-data:jira
     - storage:app
+    - manage:jira-configuration
