@@ -34,7 +34,6 @@ const ProjectSettings = () => {
   const [msg, setMsg] = useState('Idle');
   const [issueTypes, setIssueTypes] = useState([]);
   const [projectId, setProjectId] = useState(null);
-  const [isLoadingTypes, setIsLoadingTypes] = useState(false);
 
   // Grab context once
     useEffect(() => {
@@ -66,7 +65,6 @@ const ProjectSettings = () => {
   useEffect(() => {
     (async () => {
       if (!projectId) return;
-      setIsLoadingTypes(true);
       try {
         const types = await invoke('jira.issueTypesForProject', { projectId: String(projectId) });
         console.log('[ProjectSettings] Fetched issue types:', types);
@@ -74,8 +72,6 @@ const ProjectSettings = () => {
       } catch (e) {
         setMsg(`Failed to load issue types: ${e.message || e}`);
         console.error('[ProjectSettings] Failed to load issue types:', e);
-      } finally {
-        setIsLoadingTypes(false);
       }
     })();
   }, [projectId]);
@@ -89,12 +85,9 @@ const ProjectSettings = () => {
       <Text>Select an issue type to enable UIM on the Create dialog:</Text>
       <Stack space="space.100">
         {issueTypes.length === 0 && <Text>(No issue types found yet)</Text>}
-        {isLoadingTypes && <Text>Loading issue types...</Text>}
-        {!isLoadingTypes && issueTypes.length === 0 && <Text>(No issue types found for this project)</Text>}
         {issueTypes.map((t) => (
           <Button
             key={t.id}
-            isDisabled={isLoadingTypes}
             onClick={async () => {
               try {
                 const res = await invoke('uim.createForProject', {
@@ -114,7 +107,6 @@ const ProjectSettings = () => {
 
       <Button
         onClick={async () => {
-          setMsg('Listing entries...');
           try {
             const list = await invoke('uim.list');
             const pid = String(projectId);
