@@ -59,6 +59,7 @@ resources:
 
 permissions:
   scopes:
+    - read:jira-user
     - read:jira-work
     - write:jira-work
     - read:project:jira

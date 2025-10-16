@@ -25,23 +25,32 @@ resolver.define('uim.createForProject', async ({ payload }) => {
     
     // Check if this exact context already exists to prevent duplicates
     const contextExists = existingContexts.some(c => 
-        c.projectId === newContext.projectId && 
-        c.issueTypeId === newContext.issueTypeId && 
-        c.viewType === newContext.viewType);
+        String(c.projectId) === newContext.projectId && 
+        String(c.issueTypeId) === newContext.issueTypeId && 
+        c.viewType === newContext.viewType
+    );
     const contexts = contextExists ? existingContexts : [...existingContexts, newContext];
 
     const res = await api.asApp().requestJira(route`/rest/api/3/uiModifications/${existing.id}`, {
       method: 'PUT',
       headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' },
-      body: {
+      body: JSON.stringify({
         name: existing.name,
         description: existing.description,
-        data: existing.data,
         contexts: contexts
-      }
+      })
     });
     if (!res.ok) throw new Error(`Update failed: ${res.status} ${res.statusText}: ${await res.text()}`);
-    return { id: existing.id, updated: true };
+    
+    // --- START DIAGNOSTIC LOG ---
+    // Immediately after updating, let's see what Jira has stored.
+    const checkListRes = await api.asApp().requestJira(route`/rest/api/3/uiModifications`);
+    const checkList = await checkListRes.json();
+    const updatedUim = (checkList?.values || []).find(v => v.id === existing.id);
+    console.log('[DIAGNOSTIC] UIM state immediately after UPDATE (from list):', JSON.stringify(updatedUim, null, 2));
+    // --- END DIAGNOSTIC LOG ---
+
+    return { id: existing.id, updated: true, ...updatedUim };
 
   } else {
     // CREATE new UIM
@@ -55,11 +64,16 @@ resolver.define('uim.createForProject', async ({ payload }) => {
     const res = await api.asApp().requestJira(route`/rest/api/3/uiModifications`, {
       method: 'POST',
       headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' },
-      body: body
+      body: JSON.stringify(body)
     });
 
     if (!res.ok) throw new Error(`Create failed: ${res.status} ${res.statusText}: ${await res.text()}`);
-    return await res.json(); // returns { id, self }
+    const createdUim = await res.json();
+
+    // --- START DIAGNOSTIC LOG ---
+    console.log('[DIAGNOSTIC] UIM state immediately after CREATE:', JSON.stringify(createdUim, null, 2));
+    // --- END DIAGNOSTIC LOG ---
+    return createdUim;
   }
 });
 
