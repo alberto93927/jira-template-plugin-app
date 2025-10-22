@@ -1,7 +1,7 @@
 // File path: src/uim/index.js
 import { view } from '@forge/bridge';
 import { uiModificationsApi } from '@forge/jira-bridge';
-import { BUG_TEMPLATE, OTHER_TEMPLATE, BUG_SUMMARY, OTHER_SUMMARY} from './templates';
+import { BUG_TICKET_TEMPLATE, OTHER_TICKET_TEMPLATE } from './templates';
 import { consoleLogDataSnapshots, consoleLogLastUserChange } from './getSnapshots';
 
 const log = console.log;
@@ -30,22 +30,22 @@ onInit(
 
     const extension = (await view.getContext()).extension;
 
-    // Different for Bug and different for other types
-    const description= getFieldById('description');
-    if (isIssueCreate(extension)){
-      description?.setValue(isBugType(extension) ? BUG_TEMPLATE : OTHER_TEMPLATE);
+    const template = isBugType(extension) ? BUG_TICKET_TEMPLATE : OTHER_TICKET_TEMPLATE;
+
+    const description = getFieldById('description');
+    if (isIssueCreate(extension)) {
+      description?.setValue(template.description);
     }
 
     const summary = getFieldById('summary');
-    if (isIssueCreate(extension)){
-      summary?.setValue(isBugType(extension) ? BUG_SUMMARY : OTHER_SUMMARY);
+    if (isIssueCreate(extension)) {
+      summary?.setValue(template.summary);
     }
 
-    const priority= getFieldById('priority');
-    if (isIssueCreate(extension)){
-      priority?.setValue(isBugType(extension) ? '1' : '5');
+    const priority = getFieldById('priority');
+    if (isIssueCreate(extension)) {
+      priority?.setValue(template.priority);
     }
-
   },
   () => {
     return ['description', 'summary', 'priority'];
