@@ -1,0 +1,32 @@
+modules:
+  jira:issuePanel:
+    - key: simple-panel
+      resource: main
+      resolver:
+        function: resolver
+      render: native
+      title: Template Saver
+      icon: https://developer.atlassian.com/platform/forge/images/icons/issue-panel-icon.svg
+  function:
+    - key: resolver
+      handler: index.handler
+resources:
+  - key: main
+    path: src/frontend/index.jsx
+app:
+  runtime:
+    name: nodejs22.x
+    memoryMB: 256
+    architecture: arm64
+  id: ari:cloud:ecosystem::app/dfb638f5-e6d4-4d7c-bf46-967cc09babd6
+permissions:
+  scopes:
+    - read:jira-work
+    - storage:app
+  external:
+    fetch:
+      backend:
+        - address: api.atlassian.com
+  content:
+    styles:
+      - unsafe-inline
