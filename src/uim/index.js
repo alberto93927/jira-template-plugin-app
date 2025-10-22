@@ -4,18 +4,6 @@ import { uiModificationsApi } from '@forge/jira-bridge';
 import { BUG_TEMPLATE, OTHER_TEMPLATE, BUG_SUMMARY, OTHER_SUMMARY} from './templates';
 import { consoleLogDataSnapshots, consoleLogLastUserChange } from './getSnapshots';
 
-// uiModificationsApi.onInit(async ({ api, context }) => {
-//   console.log('[UIM] init', context);
-//   const summary = api.getFieldById('summary');
-//   if (summary) {
-//     const cur = summary.getValue?.() || '';
-//     summary.setValue(`[Template] ${cur}`);
-//     console.log('[UIM] summary set');
-//   } else {
-//     console.warn('[UIM] summary field not found');
-//   }
-// }, () => ['summary']);
-
 const log = console.log;
 console.log = (...args) => {
   log('UI modifications app,', ...args);
