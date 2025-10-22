@@ -36,10 +36,10 @@ onInit(
       description?.setValue(isBugType(extension) ? BUG_TEMPLATE : OTHER_TEMPLATE);
     }
 
-    // const summary = getFieldById('summary');
-    // if (isIssueCreate(extension)){
-    //   summary?.setValue(isBugType(extension) ? BUG_SUMMARY : OTHER_SUMMARY);
-    // }
+    const summary = getFieldById('summary');
+    if (isIssueCreate(extension)){
+      summary?.setValue(isBugType(extension) ? BUG_SUMMARY : OTHER_SUMMARY);
+    }
 
     // const priority= getFieldById('priority');
     // if (isIssueCreate(extension)){
@@ -48,7 +48,7 @@ onInit(
 
   },
   () => {
-    return ['description'];
+    return ['description', 'summary'];
   },
 );
 
