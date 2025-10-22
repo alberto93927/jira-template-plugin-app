@@ -41,14 +41,14 @@ onInit(
       summary?.setValue(isBugType(extension) ? BUG_SUMMARY : OTHER_SUMMARY);
     }
 
-    // const priority= getFieldById('priority');
-    // if (isIssueCreate(extension)){
-    //   priority?.setValue(isBugType(extension) ? '1' : '5');
-    // }
+    const priority= getFieldById('priority');
+    if (isIssueCreate(extension)){
+      priority?.setValue(isBugType(extension) ? '1' : '5');
+    }
 
   },
   () => {
-    return ['description', 'summary'];
+    return ['description', 'summary', 'priority'];
   },
 );
 
