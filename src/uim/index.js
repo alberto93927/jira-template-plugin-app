@@ -42,8 +42,6 @@ onInit(
 
     const extension = (await view.getContext()).extension;
 
-    // ##################
-    // TODO 1: Set template for description but only on Issue create
     // Different for Bug and different for other types
     const description= getFieldById('description');
     if (isIssueCreate(extension)){
@@ -60,18 +58,8 @@ onInit(
     //   priority?.setValue(isBugType(extension) ? '1' : '5');
     // }
 
-    // ##################
-    // TODO 2: Make the Quality Assurance tab visibile only when user tries to transtion into "Done" status.
-    // Require "change impact" and "quality review" fields to be fulfilled by the user.
-
-    // ##################
-    // TODO 3: Limit the amount
-    // Limit list of priorities if labels contains "RTB"
-    // We want to avoid situation when RTB work is always at the bottom of the backlog
-    // Hence, this can help us enforcing the priority for RTB work.
   },
   () => {
-    // return ['description', 'customfield_10070', 'customfield_10069', 'priority'];
     return ['description'];
   },
 );
@@ -86,12 +74,7 @@ onChange(
     }
     consoleLogLastUserChange(currentChange);
 
-    // ##################
-    // TODO 4: Limit list of priorites just after user adds the "RTB" label.
-    // Similar logic like in onInit
-    // const id = currentChange.getId();
   },
-  // () => ['priority'],
   () => [],
 );
 
