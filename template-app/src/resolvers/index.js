@@ -12,6 +12,7 @@ resolver.define('saveTemplate', async (req) => {
   }
 
   try {
+    //storage key for the template
     const storageKey = `template:${templateData.name.toLowerCase().replace(/\s+/g, '-')}`;
     await storage.set(storageKey, templateData);
 

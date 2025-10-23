@@ -1,18 +1,20 @@
 import React, { useEffect, useState } from 'react';
-import ForgeReconciler, { Text, Strong, Box, Stack, Button, Textfield, Form, FormHeader, FormSection, FormFooter, SectionMessage } from '@forge/react';
+import ForgeReconciler, { Text, Strong, Stack, Button, Textfield, Form, FormHeader, FormSection, FormFooter, SectionMessage } from '@forge/react';
 import { view, invoke, requestJira } from '@forge/bridge';
 
 const App = () => {
+  //State variables
   const [issueKey, setIssueKey] = useState('');
   const [templateName, setTemplateName] = useState('');
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState(null);
 
   useEffect(() => {
+    //Get the issue key from the context
     view.getContext()
       .then((context) => {
         console.log('Full context:', context);
-        const key = context?.extension?.issue?.key || context?.platformContext?.issueKey;
+        const key = context?.platformContext?.issueKey;
         console.log('Issue key extracted:', key);
         setIssueKey(key || 'Unknown');
       })
@@ -28,6 +30,7 @@ const App = () => {
       return;
     }
 
+    //Set the saving state to true
     setSaving(true);
     setMessage(null);
 
@@ -52,22 +55,45 @@ const App = () => {
         console.error('Invalid issue data:', issueData);
         throw new Error('Invalid issue data received from Jira');
       }
+      //fields to exclude from the template
+      const excludedFields = [
+        'created', 'updated', 'creator', 'reporter', 
+        'statuscategorychangedate', 'watches', 'votes',
+        'worklog', 'comment', 'issuelinks', 'subtasks',
+        'attachment', 'project', 'status', 'resolution',
+        'resolutiondate', 'lastViewed', 'aggregatetimeoriginalestimate',
+        'aggregatetimeestimate', 'aggregatetimespent', 'workratio',
+        'progress', 'aggregateprogress', 'thumbnail'
+      ];
+      const allFields = {};
+      //loop through the fields and add them to the template data
+      for (const [fieldKey, fieldValue] of Object.entries(issueData.fields)) {
+        if (excludedFields.includes(fieldKey)) {
+          continue;
+        }
+        
+        allFields[fieldKey] = fieldValue;
+      }
 
+      //template data to save
       const templateData = {
         name: templateName.trim(),
-        summary: issueData.fields.summary || '',
-        description: issueData.fields.description || '',
-        issueType: issueData.fields.issuetype?.name || 'Unknown',
-        priority: issueData.fields.priority?.name || 'None',
-        components: issueData.fields.components?.map(c => c.name) || [],
-        labels: issueData.fields.labels || [],
         createdAt: new Date().toISOString(),
-        sourceIssueKey: issueKey
+        sourceIssueKey: issueKey,
+        fields: allFields,
+        metadata: {
+          summary: issueData.fields.summary || '',
+          issueType: issueData.fields.issuetype?.name || 'Unknown',
+          priority: issueData.fields.priority?.name || 'None',
+          customFieldCount: Object.keys(allFields).filter(key => key.startsWith('customfield_')).length
+        }
       };
 
       const result = await invoke('saveTemplate', { templateData });
-
-      setMessage({ type: 'success', text: result.message });
+      setMessage({ 
+        type: 'success', 
+        text: `${result.message}.` 
+      });
       setTemplateName('');
     } catch (err) {
       console.error('Error saving template:', err);
