@@ -46,9 +46,14 @@ onInit(
     if (isIssueCreate(extension)) {
       priority?.setValue(template.priority);
     }
+
+    const templateField = getFieldById('10225');
+    if (isIssueCreate(extension)) {
+      templateField?.setValue('B');
+    }
   },
   () => {
-    return ['description', 'summary', 'priority'];
+    return ['description', 'summary', 'priority', '10225'];
   },
 );
 
@@ -63,7 +68,9 @@ onChange(
     consoleLogLastUserChange(currentChange);
 
   },
-  () => [],
+  () => {
+    return [];
+  },
 );
 
 onError(({ errors }) => {
