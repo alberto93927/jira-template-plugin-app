@@ -47,13 +47,13 @@ onInit(
       priority?.setValue(template.priority);
     }
 
-    const templateField = getFieldById('10225');
+    const templateField = getFieldById('customfield_10225');
     if (isIssueCreate(extension)) {
       templateField?.setValue('B');
     }
   },
   () => {
-    return ['description', 'summary', 'priority', '10225'];
+    return ['description', 'summary', 'priority', 'customfield_10225'];
   },
 );
 
