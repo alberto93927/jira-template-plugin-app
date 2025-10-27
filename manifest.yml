@@ -6,6 +6,16 @@ app:
   id: ari:cloud:ecosystem::app/b6bf3657-5548-4b16-87f7-22af6aed136b
 
 modules:
+  jira:uiModifications:
+    - key: tmpl-create-uim
+      title: Template prefill
+      resource: uim
+      render: native
+      trigger:
+        - event: VIEW_CREATED
+      view:
+        - GIC
+
   jira:customFieldType:
     - key: template-selector-field
       name: Template-v2
@@ -27,21 +37,13 @@ modules:
           - issue-view
           - portal-request
 
-function:
-  - key: applyTemplate
-    handler: src/resolvers/applyTemplate.handler
-  - key: getTemplates
-    handler: src/resolvers/getTemplates.handler
-
 resources:
   - key: main
     path: src/frontend/index.jsx
   - key: edit
     path: src/frontend/TemplateSelector.jsx
-  - key: applyTemplate
-    path: src/resolvers/applyTemplate.js
-  - key: getTemplates
-    path: src/resolvers/getTemplates.js
+  - key: uim
+    path: src/uim/index.js
 
 permissions:
   scopes:
