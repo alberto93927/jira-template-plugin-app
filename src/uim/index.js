@@ -3,10 +3,10 @@ import { uiModificationsApi } from '@forge/jira-bridge';
 import { JIRA_TICKET_TEMPLATES } from './templates';
 import { consoleLogDataSnapshots } from './getSnapshots';
 
-// const log = console.log;
-// console.log = (...args) => {
-//   log('UI modifications app,', ...args);
-// };
+const log = console.log;
+console.log = (...args) => {
+  log('UI modifications app,', ...args);
+};
 
 const isIssueCreate = (extension) => extension.viewType === 'GIC';
 
@@ -14,14 +14,13 @@ view.getContext().then((context) => {
   const extension = context.extension;
   // Use standard logging
   console.log('UI modifications app, Context:');
-  console.table(extension); // Use console.table here for context
+  console.table(extension);
 });
 
 const { onInit, onChange, onError } = uiModificationsApi;
 
 onInit(
   async ({ api }) => {
-    // This call will now show up properly in the console
     consoleLogDataSnapshots(api); 
     
     const { getFieldById } = api;
