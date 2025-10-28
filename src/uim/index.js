@@ -25,7 +25,6 @@ onInit(
 
     const extension = (await view.getContext()).extension;
 
-    // FIX: Use the confirmed correct Jira Custom Field ID directly
     const TEMPLATE_FIELD_ID = 'customfield_10225'; 
     const templateField = getFieldById(TEMPLATE_FIELD_ID);
 
@@ -56,7 +55,6 @@ onInit(
         console.warn(`Custom field '${TEMPLATE_FIELD_ID}' not found.`);
     }
   },
-  // Ensure the hardcoded ID is correctly listed here
   () => {
     return ['description', 'summary', 'priority', 'customfield_10225'];
   },
