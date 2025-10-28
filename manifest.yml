@@ -29,9 +29,8 @@ modules:
           - issue-transition
           - issue-view
           - portal-request
-        resolver:
-          function: get-templates
-  
+      resolver: 
+        function: get-templates  
   function:
     - key: get-templates
       handler: resolver.handler
