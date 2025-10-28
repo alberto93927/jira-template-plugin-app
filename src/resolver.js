@@ -1,5 +1,5 @@
 import Resolver from '@forge/resolver';
-import { JIRA_TICKET_TEMPLATES } from './uim/templates';
+import { JIRA_TICKET_TEMPLATES } from './src/uim/templates';
 
 const resolver = new Resolver();
 

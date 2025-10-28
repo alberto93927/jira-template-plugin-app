@@ -19,35 +19,44 @@ view.getContext().then((context) => {
 const { onInit, onChange, onError } = uiModificationsApi;
 
 onInit(
-  async ({ api, uiModifications }) => {
+  async ({ api }) => {
     consoleLogDataSnapshots(api);
     const { getFieldById } = api;
 
     const extension = (await view.getContext()).extension;
 
-    const templateField = getFieldById('customfield_10225');
+    // FIX: Use the confirmed correct Jira Custom Field ID directly
+    const TEMPLATE_FIELD_ID = 'customfield_10225'; 
+    const templateField = getFieldById(TEMPLATE_FIELD_ID);
 
-    templateField.onValueChange((value) => {
-      const template = JIRA_TICKET_TEMPLATES.find(t => t.name === value);
+    if (templateField) {
+      console.log(`Successfully found field: ${TEMPLATE_FIELD_ID}`); // Console verification
+      
+      templateField.onValueChange((value) => {
+        const template = JIRA_TICKET_TEMPLATES.find(t => t.name === value);
 
-      if (template) {
-        const description = getFieldById('description');
-        if (isIssueCreate(extension)) {
-          description?.setValue(template.description);
+        if (template) {
+          const description = getFieldById('description');
+          if (isIssueCreate(extension)) {
+            description?.setValue(template.description);
+          }
+
+          const summary = getFieldById('summary');
+          if (isIssueCreate(extension)) {
+            summary?.setValue(template.summary);
+          }
+
+          const priority = getFieldById('priority');
+          if (isIssueCreate(extension)) {
+            priority?.setValue(template.priority);
+          }
         }
-
-        const summary = getFieldById('summary');
-        if (isIssueCreate(extension)) {
-          summary?.setValue(template.summary);
-        }
-
-        const priority = getFieldById('priority');
-        if (isIssueCreate(extension)) {
-          priority?.setValue(template.priority);
-        }
-      }
-    });
+      });
+    } else {
+        console.warn(`Custom field '${TEMPLATE_FIELD_ID}' not found.`);
+    }
   },
+  // Ensure the hardcoded ID is correctly listed here
   () => {
     return ['description', 'summary', 'priority', 'customfield_10225'];
   },

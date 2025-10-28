@@ -29,9 +29,12 @@ modules:
           - issue-transition
           - issue-view
           - portal-request
+        resolver:
+          function: get-templates
+  
   function:
-      - key: get-templates
-        handler: resolver.handler
+    - key: get-templates
+      handler: resolver.handler
 resources:
   - key: main
     path: src/frontend/index.jsx
