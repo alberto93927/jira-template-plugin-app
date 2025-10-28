@@ -1,10 +1,15 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import ForgeReconciler, { Select } from '@forge/react';
 import { CustomFieldEdit } from '@forge/react/jira';
-import { view } from '@forge/bridge';
+import { view, invoke } from '@forge/bridge';
 
 const Edit = () => {
   const [value, setValue] = useState('A');
+  const [options, setOptions] = useState([]);
+
+  useEffect(() => {
+    invoke('get-templates', {}).then(setOptions);
+  }, []);
 
   const onSubmit = async () => {
     try {
@@ -13,12 +18,6 @@ const Edit = () => {
       console.error(e);
     }
   };
-
-  const options = [
-    { label: 'Option A', value: 'A' },
-    { label: 'Option B', value: 'B' },
-    { label: 'Option C', value: 'C' },
-  ];
 
   return (
     <CustomFieldEdit onSubmit={onSubmit}>
