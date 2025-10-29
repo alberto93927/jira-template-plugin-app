@@ -47,7 +47,7 @@ resources:
   - key: edit
     path: src/frontend/TemplateSelector.jsx
   - key: uim
-    path: src/uim/index.js
+    path: static/uim/dist/index.js
 
 permissions:
   scopes:

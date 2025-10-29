@@ -5,7 +5,9 @@
   "license": "MIT",
   "private": true,
   "scripts": {
-    "lint": "eslint src/**/*"
+    "lint": "eslint src/**/*",
+    "build:uim": "esbuild src/uim/index.js --bundle --format=esm --outfile=static/uim/dist/index.js",
+    "watch:uim": "esbuild src/uim/index.js --bundle --format=esm --watch --outfile=static/uim/dist/index.js"
   },
   "devDependencies": {
     "esbuild": "^0.25.10",

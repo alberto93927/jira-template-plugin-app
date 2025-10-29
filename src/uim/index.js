@@ -1,12 +1,13 @@
+console.log('--- UI MODIFICATIONS MODULE STARTING ---');
 import { view } from '@forge/bridge';
 import { uiModificationsApi } from '@forge/jira-bridge';
 import { JIRA_TICKET_TEMPLATES } from './templates';
 import { consoleLogDataSnapshots } from './getSnapshots';
 
-const log = console.log;
-console.log = (...args) => {
-  log('UI modifications app,', ...args);
-};
+// const log = console.log;
+// console.log = (...args) => {
+//   log('UI modifications app,', ...args);
+// };
 
 const isIssueCreate = (extension) => extension.viewType === 'GIC';
 
@@ -14,7 +15,7 @@ view.getContext().then((context) => {
   const extension = context.extension;
   // Use standard logging
   console.log('UI modifications app, Context:');
-  console.table(extension);
+  // console.table(extension);
 });
 
 const { onInit, onChange, onError } = uiModificationsApi;
@@ -67,18 +68,51 @@ onInit(
   },
 );
 
+// onChange(
+//   ({ api, change }) => {
+//     const { getFieldById } = api;
+//     const { current: currentChange } = change;
+//     if (!currentChange) {
+//       return;
+//     }
+//     consoleLogLastUserChange(currentChange);
+
+//   },
+//   () => {
+//     return [];
+//   },
+// );
+
 onChange(
   ({ api, change }) => {
     const { getFieldById } = api;
+    
+    // The `change.current` property provides access to the field which triggered the change
     const { current: currentChange } = change;
-    if (!currentChange) {
+
+    // Check that the change is the template field before proceeding
+    if (!currentChange || currentChange.getId() !== 'customfield_10258') {
       return;
     }
+    
+    // Log the change, this should now appear!
     consoleLogLastUserChange(currentChange);
 
+    const templateValue = currentChange.getValue();
+    
+    // NOTE: You would typically fetch the full template data here, 
+    // but for now, you can add logic based on the raw templateValue ('A', 'B', 'C')
+    // to set other fields.
+
+    // Example logic based on selected template:
+    if (templateValue === 'B') {
+        getFieldById('summary')?.setValue('New Summary for Template B');
+        // ... set other fields as needed ...
+    }
   },
+  // CORRECTED: Return the field ID(s) you want to subscribe to
   () => {
-    return [];
+    return ['customfield_10258']; // <-- MUST include the custom field ID
   },
 );
 
