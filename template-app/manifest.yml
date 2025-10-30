@@ -3,16 +3,28 @@ modules:
     - key: simple-panel
       resource: main
       resolver:
-        function: resolver
+        function: saver-resolver
       render: native
       title: Template Saver
       icon: https://developer.atlassian.com/platform/forge/images/icons/issue-panel-icon.svg
+  jira:projectPage:
+    - key: template-dashboard
+      resource: dashboard
+      resolver:
+        function: dashboard-resolver
+      render: native
+      title: Template Dashboard
+      icon: https://developer.atlassian.com/platform/forge/images/icons/issue-panel-icon.svg
   function:
-    - key: resolver
-      handler: index.handler
+    - key: saver-resolver
+      handler: index.saverHandler
+    - key: dashboard-resolver
+      handler: index.dashboardHandler
 resources:
   - key: main
-    path: src/frontend/index.jsx
+    path: src/frontend/template-saver.jsx
+  - key: dashboard
+    path: src/frontend/template-dashboard.jsx
 app:
   runtime:
     name: nodejs22.x
