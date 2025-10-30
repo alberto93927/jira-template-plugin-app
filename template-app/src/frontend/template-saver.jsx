@@ -14,7 +14,7 @@ const App = () => {
     view.getContext()
       .then((context) => {
         console.log('Full context:', context);
-        const key = context?.platformContext?.issueKey;
+        const key = context?.extension?.issue?.key || context?.platformContext?.issueKey;
         console.log('Issue key extracted:', key);
         setIssueKey(key || 'Unknown');
       })
