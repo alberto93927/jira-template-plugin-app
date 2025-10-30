@@ -6,57 +6,53 @@ app:
   id: ari:cloud:ecosystem::app/b6bf3657-5548-4b16-87f7-22af6aed136b
 
 modules:
-  jira:issueAction:
-    - key: tmpl-apply
-      title: Apply template…
-      resource: main
-      resolver: { function: resolver }
+  jira:uiModifications:
+    - key: tmpl-create-uim
+      title: Template prefill
+      resource: uim
       render: native
-    - key: tmpl-save
-      title: Save as template…
-      resource: main
-      resolver: { function: resolver }
-      render: native
+      trigger:
+        - event: VIEW_CREATED
+      view:
+        - GIC
 
-  jira:projectPage:
-    - key: tmpl-project-library
-      title: Team Template Library
-      resource: main
-      resolver: { function: resolver }
-      render: native
-
-  jira:projectSettingsPage:
-    - key: tmpl-project-settings
-      title: Template Settings
-      resource: main
-      resolver: { function: resolver }
-      render: native
-
-  # jira:uiModifications:
-  #   - key: tmpl-uim
-  #     title: Template fill during Create
-  #     resource: uim-bundle
-
-  # jira:customField:
-  #   - key: tmpl-picker
-  #     name: Template
-  #     description: Pick a template to prefill fields
-  #     type: string
-  #     readOnly: false
-  #     view:
-  #       resource: main
-  #       render: native
-
-  function:
-    - key: resolver
-      handler: index.handler
+  jira:customFieldType:
+    - key: template-selector-field
+      name: Template-v2
+      description: Pick a template to prefill fields
+      type: string
+      view:
+        render: native
+        resource: main
+        experience:
+          - issue-view
+          - portal-view
+      edit:
+        resource: edit
+        render: native
+        isInline: true
+        experience:
+          - issue-create
+          - issue-transition
+          - issue-view
+          - portal-request
 
 resources:
   - key: main
     path: src/frontend/index.jsx
+  - key: edit
+    path: src/frontend/TemplateSelector.jsx
+  - key: uim
+    path: src/uim/index.js
 
 permissions:
   scopes:
+    - read:jira-user
     - read:jira-work
     - write:jira-work
+    - read:project:jira
+    - read:issue-type:jira
+    - read:app-data:jira
+    - write:app-data:jira
     - storage:app
+    - manage:jira-configuration

@@ -5,14 +5,19 @@
   "license": "MIT",
   "private": true,
   "scripts": {
-    "lint": "eslint src/**/*"
+    "lint": "eslint src/**/*",
+    "build:uim": "esbuild src/uim/index.js --bundle --format=esm --outfile=static/uim/dist/index.js",
+    "watch:uim": "esbuild src/uim/index.js --bundle --format=esm --watch --outfile=static/uim/dist/index.js"
   },
   "devDependencies": {
+    "esbuild": "^0.25.10",
     "eslint": "^8.56.0",
     "eslint-plugin-react-hooks": "^4.6.0"
   },
   "dependencies": {
+    "@forge/api": "^6.1.2",
     "@forge/bridge": "5.5.0",
+    "@forge/jira-bridge": "^0.38.3",
     "@forge/react": "11.3.0",
     "@forge/resolver": "1.7.0",
     "react": "^18.2.0"
