@@ -39,8 +39,16 @@ onInit(
     }
 
     try {
-      // Try to get the selected template ID from the custom field
+      // Debug: Check if the custom field exists
+      console.log('Attempting to get template field with ID: customfield_10058');
       const templateField = getFieldById('customfield_10058'); // Template custom field key
+      console.log('Template field object:', templateField);
+      console.log('Template field value:', templateField?.getValue());
+
+      if (!templateField) {
+        console.warn('Template field not found! Field may not be added to Create Issue screen.');
+      }
+
       const selectedTemplateId = templateField?.getValue();
 
       let template = null;

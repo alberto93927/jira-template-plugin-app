@@ -5,11 +5,8 @@ import ForgeReconciler, {
   Button,
   Stack,
   SectionMessage,
-  Select,
-  Box,
 } from '@forge/react';
 import { invoke, view } from '@forge/bridge';
-import { getTemplateOptions, getTemplateById } from '../data/templates';
 
 const ApplyTemplate = ({ issueId, projectId }) => {
   const [msg, setMsg] = useState('Pick a template…');
@@ -30,77 +27,6 @@ const ProjectLibrary = ({ projectId }) => {
   const [data, setData] = useState('Loading templates…');
   useEffect(() => { invoke('getText', { example: `list-${projectId}` }).then((d) => setData(String(d))); }, [projectId]);
   return <Text>Team Template Library for project {projectId}. {data}</Text>;
-};
-
-// Template custom field component
-const TemplateSelectorField = () => {
-  const [ctx, setCtx] = useState(null);
-  const [value, setValue] = useState('');
-  const [loading, setLoading] = useState(true);
-  const [options, setOptions] = useState([]);
-
-  // Initialize context and load templates
-  useEffect(() => {
-    Promise.all([
-      view.getContext(),
-      (async () => {
-        try {
-          const templateOptions = getTemplateOptions();
-          const selectOptions = templateOptions.map((tmpl) => ({
-            label: tmpl.name,
-            value: tmpl.id,
-          }));
-          setOptions(selectOptions);
-          console.log('[TemplateSelector] Loaded options:', selectOptions);
-        } catch (e) {
-          console.error('[TemplateSelector] Failed to load templates:', e);
-        }
-        setLoading(false);
-      })(),
-    ]).then(([context]) => {
-      console.log('[TemplateSelector] Context:', context);
-      setCtx(context);
-      // Set the initial value from context if available
-      if (context?.value) {
-        setValue(context.value);
-      }
-    });
-  }, []);
-
-  if (loading || !ctx) {
-    return <Text>Loading templates…</Text>;
-  }
-
-  // View mode - display selected template name
-  if (!ctx.extension?.isEditing) {
-    if (!value) {
-      return <Text>No template selected</Text>;
-    }
-    const template = getTemplateById(value);
-    if (!template) {
-      return <Text>Unknown template</Text>;
-    }
-    return <Text>{template.name}</Text>;
-  }
-
-  // Edit mode - display dropdown selector
-  return (
-    <Box>
-      <Select
-        label="Template"
-        placeholder="Choose a template to prefill fields"
-        options={options}
-        value={value ? { label: getTemplateById(value)?.name || '', value } : null}
-        onChange={(newValue) => {
-          const selectedValue = newValue ? newValue.value : '';
-          console.log('[TemplateSelector] Selection changed:', selectedValue);
-          setValue(selectedValue);
-        }}
-        isSearchable
-        isClearable
-      />
-    </Box>
-  );
 };
 
 const ProjectSettings = () => {
@@ -243,11 +169,6 @@ const App = () => {
   const platform = ctx.platformContext || {};
   const projectId = platform.projectId;
   const issueId = platform.issueId;
-
-  // Check if this is a custom field context
-  if (ctx.extension?.isEditing !== undefined || ctx.fieldValue !== undefined) {
-    return <TemplateSelectorField />;
-  }
 
   // Simple router by module key (keeps one bundle for all modules)
   if (moduleKey === 'tmpl-create-uim') return <ApplyTemplate issueId={issueId} projectId={projectId} />;

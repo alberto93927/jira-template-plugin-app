@@ -53,6 +53,17 @@ Re-apply prefill with new template
 
 ## Enablement Flow
 
+### Prerequisites: Configure Custom Field in Jira
+
+Before enabling the feature, the custom field must be added to the Create Issue screen:
+
+1. Go to **Jira Settings** → **Issues** → **Screens**
+2. Find and configure the **Create Issue Screen**
+3. Add the **Template** custom field to the screen
+4. Save configuration
+
+**See SETUP_INSTRUCTIONS.md for detailed steps.**
+
 ### For Jira Admins
 
 1. Go to **Project Settings** → **Template Manager Settings**

@@ -37,15 +37,17 @@ modules:
       title: Template fill during Create
       resource: uim-bundle
 
-  jira:customField:
+  jira:customFieldType:
     - key: tmpl-picker
       name: Template
       description: Pick a template to prefill fields
       type: string
-      readOnly: false
       view:
         resource: main
-        render: default
+        render: native
+      edit:
+        resource: template-field-edit
+        render: native
 
   function:
     - key: resolver
@@ -54,6 +56,8 @@ modules:
 resources:
   - key: main
     path: src/frontend/index.jsx
+  - key: template-field-edit
+    path: src/frontend/TemplateSelectorField.jsx
   - key: uim-bundle
     path: static/uim/dist
 
