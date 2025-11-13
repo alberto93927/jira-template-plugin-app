@@ -1,78 +1,158 @@
 // File path: src/uim/index.js
+// UI Modifications for Create Issue Context (GIC) - prefills fields based on selected template
+
 import { view } from '@forge/bridge';
 import { uiModificationsApi } from '@forge/jira-bridge';
-import { BUG_TICKET_TEMPLATE, OTHER_TICKET_TEMPLATE } from './templates';
+import { getTemplateById } from '../data/templates';
 import { consoleLogDataSnapshots, consoleLogLastUserChange } from './getSnapshots';
 
 const log = console.log;
 console.log = (...args) => {
-  log('UI modifications app,', ...args);
+  log('[UIM]', ...args);
 };
 
-// const isIssueTranstion = (extension: UiModificationExtension) => extension.viewType === 'IssueTransition';
-// const isIssueView = (extension: UiModificationExtension) => extension.viewType === 'IssueView';
 const isIssueCreate = (extension) => extension.viewType === 'GIC';
-const isBugType = (extension) => extension.issueType.name === 'Bug';
 
 // Context usage
 view.getContext().then((context) => {
   const extension = context.extension;
-  console.log('Context:');
-  console.table(extension);
+  console.log('Extension context:', extension);
 });
 
 const { onInit, onChange, onError } = uiModificationsApi;
 
+/**
+ * onInit: Prefill fields based on selected template
+ * If a template is selected in the custom field, use its values.
+ * Otherwise, apply a default template based on issue type.
+ */
 onInit(
-  async ({ api, uiModifications }) => {
+  async ({ api }) => {
     consoleLogDataSnapshots(api);
-    const { getFieldById, getScreenTabById } = api;
+    const { getFieldById } = api;
 
     const extension = (await view.getContext()).extension;
 
-    const template = isBugType(extension) ? BUG_TICKET_TEMPLATE : OTHER_TICKET_TEMPLATE;
-
-    const description = getFieldById('description');
-    if (isIssueCreate(extension)) {
-      description?.setValue(template.description);
+    if (!isIssueCreate(extension)) {
+      console.log('Not a Create Issue view, skipping prefill');
+      return;
     }
 
-    const summary = getFieldById('summary');
-    if (isIssueCreate(extension)) {
-      summary?.setValue(template.summary);
-    }
+    try {
+      // Try to get the selected template ID from the custom field
+      const templateField = getFieldById('customfield_10058'); // Template custom field key
+      const selectedTemplateId = templateField?.getValue();
 
-    const priority = getFieldById('priority');
-    if (isIssueCreate(extension)) {
-      priority?.setValue(template.priority);
-    }
+      let template = null;
 
-    const templateField = getFieldById('customfield_10225');
-    if (isIssueCreate(extension)) {
-      templateField?.setValue('B');
+      if (selectedTemplateId) {
+        // User selected a template - use it
+        console.log('Selected template ID:', selectedTemplateId);
+        template = getTemplateById(selectedTemplateId);
+        if (!template) {
+          console.warn('Template not found:', selectedTemplateId);
+          return;
+        }
+      } else {
+        // No template selected - apply default based on issue type
+        console.log('No template selected, using issue type default');
+        const issueTypeName = extension?.issueType?.name;
+
+        if (issueTypeName === 'Bug') {
+          template = getTemplateById('tmpl-001'); // Bug Report template
+        } else {
+          template = getTemplateById('tmpl-002'); // Feature Request template (default)
+        }
+      }
+
+      if (!template) {
+        console.warn('No template could be determined');
+        return;
+      }
+
+      // Prefill fields from template
+      console.log('Applying template:', template.name);
+
+      const description = getFieldById('description');
+      if (description && template.fields.description) {
+        description.setValue(template.fields.description);
+      }
+
+      const summary = getFieldById('summary');
+      if (summary && template.fields.summary) {
+        summary.setValue(template.fields.summary);
+      }
+
+      const priority = getFieldById('priority');
+      if (priority && template.fields.priority) {
+        priority.setValue(template.fields.priority);
+      }
+
+    } catch (e) {
+      console.error('Error during prefill initialization:', e);
     }
   },
   () => {
-    return ['description', 'summary', 'priority', 'customfield_10225'];
+    // Watch these fields for changes
+    return ['description', 'summary', 'priority', 'customfield_10058'];
   },
 );
 
+/**
+ * onChange: Track field changes and potentially re-prefill based on template selection
+ */
 onChange(
-  ({ api, change }) => {
+  async ({ api, change }) => {
     const { getFieldById } = api;
-    // The `change.current` property provides access to the field which triggered the change
     const { current: currentChange } = change;
+
     if (!currentChange) {
       return;
     }
+
     consoleLogLastUserChange(currentChange);
 
+    // If the template field was changed, re-apply prefill
+    if (currentChange.fieldId === 'customfield_10058') {
+      console.log('Template field changed, re-applying prefill');
+      const templateId = currentChange.value;
+
+      if (!templateId) {
+        console.log('Template cleared');
+        return;
+      }
+
+      const template = getTemplateById(templateId);
+      if (!template) {
+        console.warn('Template not found:', templateId);
+        return;
+      }
+
+      // Apply template values to other fields
+      const description = getFieldById('description');
+      if (description && template.fields.description) {
+        description.setValue(template.fields.description);
+      }
+
+      const summary = getFieldById('summary');
+      if (summary && template.fields.summary) {
+        summary.setValue(template.fields.summary);
+      }
+
+      const priority = getFieldById('priority');
+      if (priority && template.fields.priority) {
+        priority.setValue(template.fields.priority);
+      }
+
+      console.log('Template applied:', template.name);
+    }
   },
   () => {
-    return [];
+    // Watch all relevant fields
+    return ['description', 'summary', 'priority', 'customfield_10058'];
   },
 );
 
 onError(({ errors }) => {
-  console.log('Errors', errors)
-})
+  console.error('Errors:', errors);
+});

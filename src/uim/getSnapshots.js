@@ -44,4 +44,3 @@ export const consoleLogLastUserChange = (field) => {
   console.log('Last change snapshot:');
   console.table({ [field.getId()]: getFieldData(field) });
 };
-
