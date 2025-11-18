@@ -3452,6 +3452,7 @@ import_bridge.view.getContext().then((context) => {
 var { onInit, onChange, onError } = import_jira_bridge2.uiModificationsApi;
 onInit(
   async ({ api }) => {
+    window.__uimApi = api;
     consoleLogDataSnapshots(api);
     const { getFieldById } = api;
     const context = await import_bridge.view.getContext();
@@ -3530,18 +3531,34 @@ onChange(
       return;
     }
     consoleLogLastUserChange(currentChange);
+    let templateId = null;
     if (currentChange.fieldId === "customfield_10058") {
-      console.log("Template field changed, re-applying prefill");
-      const templateId = currentChange.value;
-      if (!templateId) {
-        console.log("Template cleared");
-        return;
+      console.log("Template field changed via Jira API");
+      templateId = currentChange.value;
+    } else {
+      try {
+        const stored = sessionStorage.getItem("template-selection");
+        if (stored) {
+          const data = JSON.parse(stored);
+          const storedTemplateId = data.templateId;
+          console.log("Checking sessionStorage for template selection:", storedTemplateId);
+          const fieldValue = getFieldById("customfield_10058")?.getValue();
+          if (storedTemplateId && storedTemplateId !== fieldValue) {
+            console.log("Template selection changed in sessionStorage:", storedTemplateId);
+            templateId = storedTemplateId;
+          }
+        }
+      } catch (e) {
+        console.warn("Error reading sessionStorage:", e);
       }
+    }
+    if (templateId) {
       const template = getTemplateById(templateId);
       if (!template) {
         console.warn("Template not found:", templateId);
         return;
       }
+      console.log("Applying template:", template.name);
       const description = getFieldById("description");
       if (description && template.fields.description) {
         description.setValue(template.fields.description);
@@ -3565,6 +3582,84 @@ onChange(
     return ["issuetype", "description", "summary", "priority", "customfield_10058"];
   }
 );
+var applyTemplateFromSessionStorage = async (api) => {
+  const { getFieldById } = api;
+  try {
+    const stored = sessionStorage.getItem("template-selection");
+    if (!stored) {
+      console.log("No template selection in sessionStorage");
+      return;
+    }
+    const data = JSON.parse(stored);
+    const templateId = data.templateId;
+    console.log("Applying template from sessionStorage:", templateId);
+    const template = getTemplateById(templateId);
+    if (!template) {
+      console.warn("Template not found:", templateId);
+      return;
+    }
+    console.log("Re-applying template:", template.name);
+    const description = getFieldById("description");
+    if (description && template.fields.description) {
+      console.log("Setting description:", template.fields.description);
+      description.setValue(template.fields.description);
+      console.log("Description set");
+    }
+    const summary = getFieldById("summary");
+    if (summary && template.fields.summary) {
+      console.log("Setting summary:", template.fields.summary);
+      summary.setValue(template.fields.summary);
+      console.log("Summary set");
+    }
+    const priority = getFieldById("priority");
+    if (priority && template.fields.priority) {
+      console.log("Setting priority:", template.fields.priority);
+      priority.setValue(template.fields.priority);
+      console.log("Priority set");
+    }
+    const issuetype = getFieldById("issuetype");
+    if (issuetype && template.fields.issuetype) {
+      console.log("Setting issuetype:", template.fields.issuetype);
+      issuetype.setValue(template.fields.issuetype);
+      console.log("Issuetype set");
+    }
+    console.log("Template re-applied:", template.name);
+  } catch (e) {
+    console.error("Error applying template from sessionStorage:", e);
+  }
+};
+if (typeof window !== "undefined") {
+  window.addEventListener("storage", async (event) => {
+    if (event.key === "template-selection" && window.__uimApi) {
+      console.log("Storage event: template-selection changed");
+      await applyTemplateFromSessionStorage(window.__uimApi);
+    }
+  });
+  window.addEventListener("template-selection-changed", async (event) => {
+    console.log("Custom event received: template-selection-changed", event.detail);
+    if (window.__uimApi) {
+      await applyTemplateFromSessionStorage(window.__uimApi);
+    } else {
+      console.warn("UIM API not available for custom event");
+    }
+  });
+  let lastTemplateId = null;
+  setInterval(() => {
+    try {
+      const stored = sessionStorage.getItem("template-selection");
+      if (stored && window.__uimApi) {
+        const data = JSON.parse(stored);
+        const currentTemplateId = data.templateId;
+        if (currentTemplateId !== lastTemplateId) {
+          console.log("Polling detected template change:", currentTemplateId);
+          lastTemplateId = currentTemplateId;
+          applyTemplateFromSessionStorage(window.__uimApi);
+        }
+      }
+    } catch (e) {
+    }
+  }, 100);
+}
 onError(({ errors }) => {
   console.error("Errors:", errors);
 });

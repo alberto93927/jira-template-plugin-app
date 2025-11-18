@@ -1,10 +1,9 @@
 // File path: src/frontend/TemplateSelectorField.jsx
 // Custom field editor for selecting a template to prefill ticket fields
-// Follows the proven pattern from commit c98d641
+// Saves immediately on selection change to trigger UIM prefill
 
 import React, { useState } from 'react';
 import ForgeReconciler, { Select } from '@forge/react';
-import { CustomFieldEdit } from '@forge/react/jira';
 import { view } from '@forge/bridge';
 import { getTemplateOptions } from '../data/templates';
 
@@ -20,39 +19,46 @@ const Edit = () => {
   const defaultValue = options.length > 0 ? options[0].value : '';
   const [value, setValue] = useState(defaultValue);
 
-  const onSubmit = async () => {
-    try {
-      console.log('[TemplateSelectorField] Submitting value:', value);
+  const handleChange = async (newValue) => {
+    const selectedValue = newValue ? newValue.value : '';
+    console.log('[TemplateSelectorField] Selection changed:', selectedValue);
+    setValue(selectedValue);
 
-      // Save template selection to sessionStorage so UIM can access it
-      // This persists for the duration of the Create Issue flow
-      sessionStorage.setItem('template-selection', JSON.stringify({ templateId: value, timestamp: Date.now() }));
+    try {
+      // Save to sessionStorage so UIM can detect the change
+      console.log('[TemplateSelectorField] Saving to sessionStorage:', selectedValue);
+      sessionStorage.setItem('template-selection', JSON.stringify({ templateId: selectedValue, timestamp: Date.now() }));
       console.log('[TemplateSelectorField] Template selection saved to sessionStorage');
 
       // Submit the value to Jira to save the field
-      await view.submit(value);
-      console.log('[TemplateSelectorField] Value submitted to Jira:', value);
+      console.log('[TemplateSelectorField] Submitting value to Jira:', selectedValue);
+      await view.submit(selectedValue);
+      console.log('[TemplateSelectorField] Value submitted to Jira');
+
+      // Dispatch a custom event so UIM can listen for changes
+      window.dispatchEvent(new CustomEvent('template-selection-changed', { detail: { templateId: selectedValue } }));
+      console.log('[TemplateSelectorField] Custom event dispatched');
+
+      // Also manually dispatch a storage event since sessionStorage changes don't naturally trigger storage events
+      const storageEvent = new Event('storage');
+      Object.defineProperty(storageEvent, 'key', { value: 'template-selection' });
+      window.dispatchEvent(storageEvent);
+      console.log('[TemplateSelectorField] Storage event dispatched manually');
     } catch (e) {
-      console.error('[TemplateSelectorField] Error during submit:', e);
+      console.error('[TemplateSelectorField] Error during change:', e);
     }
   };
 
   return (
-    <CustomFieldEdit onSubmit={onSubmit}>
-      <Select
-        label="Template"
-        placeholder="Choose a template to prefill fields"
-        options={options}
-        value={value ? { label: options.find((opt) => opt.value === value)?.label || '', value } : null}
-        onChange={(newValue) => {
-          const selectedValue = newValue ? newValue.value : '';
-          console.log('[TemplateSelectorField] Selection changed:', selectedValue);
-          setValue(selectedValue);
-        }}
-        isSearchable
-        isClearable
-      />
-    </CustomFieldEdit>
+    <Select
+      label="Template"
+      placeholder="Choose a template to prefill fields"
+      options={options}
+      value={value ? { label: options.find((opt) => opt.value === value)?.label || '', value } : null}
+      onChange={handleChange}
+      isSearchable
+      isClearable
+    />
   );
 };
 
