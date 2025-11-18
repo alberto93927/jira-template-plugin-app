@@ -1,7 +1,7 @@
 // File path: src/uim/index.js
 // UI Modifications for Create Issue Context (GIC) - prefills fields based on selected template
 
-import { view, invoke } from '@forge/bridge';
+import { view } from '@forge/bridge';
 import { uiModificationsApi } from '@forge/jira-bridge';
 import { getTemplateById } from '../data/templates';
 import { consoleLogDataSnapshots, consoleLogLastUserChange } from './getSnapshots';
@@ -45,19 +45,20 @@ onInit(
     try {
       let selectedTemplateId = null;
 
-      // Try to get template selection via backend resolver
-      // Since custom fields with customRenderer are not accessible via UIM API,
-      // we fetch the selected template ID from the backend resolver
+      // Try to get template selection from sessionStorage
+      // The custom field saves to sessionStorage on submit
       try {
-        console.log('Attempting to get template selection via backend...');
-        selectedTemplateId = await invoke('customfield.getTemplateSelection', {});
-        if (selectedTemplateId) {
-          console.log('Found template selection via backend:', selectedTemplateId);
+        console.log('Attempting to get template selection from sessionStorage...');
+        const stored = sessionStorage.getItem('template-selection');
+        if (stored) {
+          const data = JSON.parse(stored);
+          selectedTemplateId = data.templateId;
+          console.log('Found template selection in sessionStorage:', selectedTemplateId);
         } else {
-          console.log('No template selection found via backend');
+          console.log('No template selection found in sessionStorage');
         }
-      } catch (invokeError) {
-        console.warn('Error invoking backend resolver:', invokeError);
+      } catch (storageError) {
+        console.warn('Error reading sessionStorage:', storageError);
       }
 
       let template = null;

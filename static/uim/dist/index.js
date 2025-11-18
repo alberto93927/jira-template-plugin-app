@@ -3512,15 +3512,17 @@ onInit(
     try {
       let selectedTemplateId = null;
       try {
-        console.log("Attempting to get template selection via backend...");
-        selectedTemplateId = await (0, import_bridge.invoke)("customfield.getTemplateSelection", {});
-        if (selectedTemplateId) {
-          console.log("Found template selection via backend:", selectedTemplateId);
+        console.log("Attempting to get template selection from sessionStorage...");
+        const stored = sessionStorage.getItem("template-selection");
+        if (stored) {
+          const data = JSON.parse(stored);
+          selectedTemplateId = data.templateId;
+          console.log("Found template selection in sessionStorage:", selectedTemplateId);
         } else {
-          console.log("No template selection found via backend");
+          console.log("No template selection found in sessionStorage");
         }
-      } catch (invokeError) {
-        console.warn("Error invoking backend resolver:", invokeError);
+      } catch (storageError) {
+        console.warn("Error reading sessionStorage:", storageError);
       }
       let template = null;
       if (selectedTemplateId) {

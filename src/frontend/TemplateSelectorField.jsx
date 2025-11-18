@@ -5,7 +5,7 @@
 import React, { useState } from 'react';
 import ForgeReconciler, { Select } from '@forge/react';
 import { CustomFieldEdit } from '@forge/react/jira';
-import { view, invoke } from '@forge/bridge';
+import { view } from '@forge/bridge';
 import { getTemplateOptions } from '../data/templates';
 
 const Edit = () => {
@@ -24,9 +24,10 @@ const Edit = () => {
     try {
       console.log('[TemplateSelectorField] Submitting value:', value);
 
-      // Save template selection via backend resolver so UIM can access it
-      await invoke('customfield.saveTemplateSelection', { templateId: value });
-      console.log('[TemplateSelectorField] Template selection saved to backend');
+      // Save template selection to sessionStorage so UIM can access it
+      // This persists for the duration of the Create Issue flow
+      sessionStorage.setItem('template-selection', JSON.stringify({ templateId: value, timestamp: Date.now() }));
+      console.log('[TemplateSelectorField] Template selection saved to sessionStorage');
 
       // Submit the value to Jira to save the field
       await view.submit(value);
