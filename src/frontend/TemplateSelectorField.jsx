@@ -1,49 +1,40 @@
 // File path: src/frontend/TemplateSelectorField.jsx
 // Custom field editor for selecting a template to prefill ticket fields
-// Uses the proven pattern from commit 5290412 with dynamic template options
+// Follows the proven pattern from commit c98d641
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import ForgeReconciler, { Select } from '@forge/react';
 import { CustomFieldEdit } from '@forge/react/jira';
-import { view } from '@forge/bridge';
+import { view, invoke } from '@forge/bridge';
 import { getTemplateOptions } from '../data/templates';
 
-const Edit = ({ value: initialValue }) => {
-  const [value, setValue] = useState(initialValue || '');
-  const [loading, setLoading] = useState(true);
-  const [options, setOptions] = useState([]);
+const Edit = () => {
+  // Get template options as Select options
+  const templateOptions = getTemplateOptions();
+  const options = templateOptions.map((tmpl) => ({
+    label: tmpl.name,
+    value: tmpl.id,
+  }));
 
-  // Load template options on mount
-  useEffect(() => {
-    try {
-      console.log('[TemplateSelectorField] Loading template options...');
-      const templateOptions = getTemplateOptions();
-      const selectOptions = templateOptions.map((tmpl) => ({
-        label: tmpl.name,
-        value: tmpl.id,
-      }));
-      setOptions(selectOptions);
-      setLoading(false);
-      console.log('[TemplateSelectorField] Loaded options:', selectOptions);
-    } catch (e) {
-      console.error('[TemplateSelectorField] Failed to load templates:', e);
-      setLoading(false);
-    }
-  }, []);
+  // Default to first template if available
+  const defaultValue = options.length > 0 ? options[0].value : '';
+  const [value, setValue] = useState(defaultValue);
 
   const onSubmit = async () => {
     try {
       console.log('[TemplateSelectorField] Submitting value:', value);
+
+      // Save template selection via backend resolver so UIM can access it
+      await invoke('customfield.saveTemplateSelection', { templateId: value });
+      console.log('[TemplateSelectorField] Template selection saved to backend');
+
+      // Submit the value to Jira to save the field
       await view.submit(value);
-      console.log('[TemplateSelectorField] Value submitted successfully');
+      console.log('[TemplateSelectorField] Value submitted to Jira:', value);
     } catch (e) {
-      console.error('[TemplateSelectorField] Error submitting:', e);
+      console.error('[TemplateSelectorField] Error during submit:', e);
     }
   };
-
-  if (loading) {
-    return <div>Loading templates…</div>;
-  }
 
   return (
     <CustomFieldEdit onSubmit={onSubmit}>

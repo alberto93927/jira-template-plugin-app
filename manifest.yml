@@ -48,6 +48,12 @@ modules:
       edit:
         resource: template-field-edit
         render: native
+        isInline: true
+        experience:
+          - issue-create
+          - issue-transition
+          - issue-view
+          - portal-request
 
   function:
     - key: resolver

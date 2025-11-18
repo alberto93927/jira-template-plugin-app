@@ -1,7 +1,7 @@
 // File path: src/uim/index.js
 // UI Modifications for Create Issue Context (GIC) - prefills fields based on selected template
 
-import { view } from '@forge/bridge';
+import { view, invoke } from '@forge/bridge';
 import { uiModificationsApi } from '@forge/jira-bridge';
 import { getTemplateById } from '../data/templates';
 import { consoleLogDataSnapshots, consoleLogLastUserChange } from './getSnapshots';
@@ -23,15 +23,19 @@ const { onInit, onChange, onError } = uiModificationsApi;
 
 /**
  * onInit: Prefill fields based on selected template
- * If a template is selected in the custom field, use its values.
+ * If a template is selected (via backend resolver), use its values.
  * Otherwise, apply a default template based on issue type.
+ *
+ * Note: Custom fields rendered with customRenderer are not accessible via UIM API,
+ * so we use a backend resolver to communicate the selected template ID from the custom field.
  */
 onInit(
   async ({ api }) => {
     consoleLogDataSnapshots(api);
     const { getFieldById } = api;
 
-    const extension = (await view.getContext()).extension;
+    const context = await view.getContext();
+    const extension = context.extension;
 
     if (!isIssueCreate(extension)) {
       console.log('Not a Create Issue view, skipping prefill');
@@ -39,29 +43,36 @@ onInit(
     }
 
     try {
-      // Debug: Check if the custom field exists
-      console.log('Attempting to get template field with ID: customfield_10058');
-      const templateField = getFieldById('customfield_10058'); // Template custom field key
-      console.log('Template field object:', templateField);
-      console.log('Template field value:', templateField?.getValue());
+      let selectedTemplateId = null;
 
-      if (!templateField) {
-        console.warn('Template field not found! Field may not be added to Create Issue screen.');
+      // Try to get template selection via backend resolver
+      // Since custom fields with customRenderer are not accessible via UIM API,
+      // we fetch the selected template ID from the backend resolver
+      try {
+        console.log('Attempting to get template selection via backend...');
+        selectedTemplateId = await invoke('customfield.getTemplateSelection', {});
+        if (selectedTemplateId) {
+          console.log('Found template selection via backend:', selectedTemplateId);
+        } else {
+          console.log('No template selection found via backend');
+        }
+      } catch (invokeError) {
+        console.warn('Error invoking backend resolver:', invokeError);
       }
-
-      const selectedTemplateId = templateField?.getValue();
 
       let template = null;
 
       if (selectedTemplateId) {
         // User selected a template - use it
-        console.log('Selected template ID:', selectedTemplateId);
+        console.log('Using selected template ID:', selectedTemplateId);
         template = getTemplateById(selectedTemplateId);
         if (!template) {
-          console.warn('Template not found:', selectedTemplateId);
-          return;
+          console.warn('Template not found for ID:', selectedTemplateId);
+          // Fall through to use default
         }
-      } else {
+      }
+
+      if (!template) {
         // No template selected - apply default based on issue type
         console.log('No template selected, using issue type default');
         const issueTypeName = extension?.issueType?.name;

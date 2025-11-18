@@ -3503,29 +3503,34 @@ onInit(
   async ({ api }) => {
     consoleLogDataSnapshots(api);
     const { getFieldById } = api;
-    const extension = (await import_bridge.view.getContext()).extension;
+    const context = await import_bridge.view.getContext();
+    const extension = context.extension;
     if (!isIssueCreate(extension)) {
       console.log("Not a Create Issue view, skipping prefill");
       return;
     }
     try {
-      console.log("Attempting to get template field with ID: customfield_10058");
-      const templateField = getFieldById("customfield_10058");
-      console.log("Template field object:", templateField);
-      console.log("Template field value:", templateField?.getValue());
-      if (!templateField) {
-        console.warn("Template field not found! Field may not be added to Create Issue screen.");
+      let selectedTemplateId = null;
+      try {
+        console.log("Attempting to get template selection via backend...");
+        selectedTemplateId = await (0, import_bridge.invoke)("customfield.getTemplateSelection", {});
+        if (selectedTemplateId) {
+          console.log("Found template selection via backend:", selectedTemplateId);
+        } else {
+          console.log("No template selection found via backend");
+        }
+      } catch (invokeError) {
+        console.warn("Error invoking backend resolver:", invokeError);
       }
-      const selectedTemplateId = templateField?.getValue();
       let template = null;
       if (selectedTemplateId) {
-        console.log("Selected template ID:", selectedTemplateId);
+        console.log("Using selected template ID:", selectedTemplateId);
         template = getTemplateById(selectedTemplateId);
         if (!template) {
-          console.warn("Template not found:", selectedTemplateId);
-          return;
+          console.warn("Template not found for ID:", selectedTemplateId);
         }
-      } else {
+      }
+      if (!template) {
         console.log("No template selected, using issue type default");
         const issueTypeName = extension?.issueType?.name;
         if (issueTypeName === "Bug") {
