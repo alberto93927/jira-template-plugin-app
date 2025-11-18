@@ -3239,7 +3239,7 @@ var BUG_DESCRIPTION = {
       content: [
         {
           type: "text",
-          text: "Description",
+          text: "Bug Description",
           marks: [{ type: "strong" }]
         }
       ]
@@ -3249,21 +3249,27 @@ var BUG_DESCRIPTION = {
       content: [
         {
           type: "text",
-          text: "In the description section, you must briefly explain what you have done before facing the bug.",
+          text: "Simple and brief bug description.",
           marks: [
             { type: "em" },
             { type: "textColor", attrs: { color: "#97a0af" } }
           ]
         }
       ]
-    },
+    }
+  ]
+};
+var EPIC_DESCRIPTION = {
+  version: 1,
+  type: "doc",
+  content: [
     {
       type: "heading",
       attrs: { level: 3 },
       content: [
         {
           type: "text",
-          text: "Steps to reproduce",
+          text: "Epic Description",
           marks: [{ type: "strong" }]
         }
       ]
@@ -3273,55 +3279,7 @@ var BUG_DESCRIPTION = {
       content: [
         {
           type: "text",
-          text: "In this section, you should describe how to reproduce the bug in step by step manner. Easy to follow steps give room to the developers to fix the issue without any chaos.",
-          marks: [
-            { type: "em" },
-            { type: "textColor", attrs: { color: "#97a0af" } }
-          ]
-        }
-      ]
-    },
-    {
-      type: "heading",
-      attrs: { level: 3 },
-      content: [
-        {
-          type: "text",
-          text: "Expected result",
-          marks: [{ type: "strong" }]
-        }
-      ]
-    },
-    {
-      type: "paragraph",
-      content: [
-        {
-          type: "text",
-          text: "What is the expected output from the application when you make an action which causes failure.",
-          marks: [
-            { type: "em" },
-            { type: "textColor", attrs: { color: "#97a0af" } }
-          ]
-        }
-      ]
-    },
-    {
-      type: "heading",
-      attrs: { level: 3 },
-      content: [
-        {
-          type: "text",
-          text: "Actual result",
-          marks: [{ type: "strong" }]
-        }
-      ]
-    },
-    {
-      type: "paragraph",
-      content: [
-        {
-          type: "text",
-          text: "What is the actual output from the application when you perform the steps to reproduce.",
+          text: "Simple and brief epic description.",
           marks: [
             { type: "em" },
             { type: "textColor", attrs: { color: "#97a0af" } }
@@ -3341,7 +3299,7 @@ var TASK_DESCRIPTION = {
       content: [
         {
           type: "text",
-          text: "Background",
+          text: "Task Description",
           marks: [{ type: "strong" }]
         }
       ]
@@ -3351,21 +3309,27 @@ var TASK_DESCRIPTION = {
       content: [
         {
           type: "text",
-          text: "In the background section, please provide details why this change is needed.",
+          text: "Simple and brief task description.",
           marks: [
             { type: "em" },
             { type: "textColor", attrs: { color: "#97a0af" } }
           ]
         }
       ]
-    },
+    }
+  ]
+};
+var STORY_DESCRIPTION = {
+  version: 1,
+  type: "doc",
+  content: [
     {
       type: "heading",
       attrs: { level: 3 },
       content: [
         {
           type: "text",
-          text: "Scope of work",
+          text: "Story Description",
           marks: [{ type: "strong" }]
         }
       ]
@@ -3375,31 +3339,7 @@ var TASK_DESCRIPTION = {
       content: [
         {
           type: "text",
-          text: "In this section, you should describe what is the scope of work, changes that need to be made.",
-          marks: [
-            { type: "em" },
-            { type: "textColor", attrs: { color: "#97a0af" } }
-          ]
-        }
-      ]
-    },
-    {
-      type: "heading",
-      attrs: { level: 3 },
-      content: [
-        {
-          type: "text",
-          text: "Resources",
-          marks: [{ type: "strong" }]
-        }
-      ]
-    },
-    {
-      type: "paragraph",
-      content: [
-        {
-          type: "text",
-          text: "Provide any useful resources such as links to get more context for the work.",
+          text: "Simple and brief Story description.",
           marks: [
             { type: "em" },
             { type: "textColor", attrs: { color: "#97a0af" } }
@@ -3412,35 +3352,46 @@ var TASK_DESCRIPTION = {
 var TEMPLATES = [
   {
     id: "tmpl-001",
-    name: "Bug Report",
-    description: "Standard bug report template with sections for description, steps to reproduce, and expected vs actual results.",
+    name: "Bug",
+    description: "Bug report template",
     fields: {
       priority: "1",
-      // Highest priority
-      summary: "Bug: [SHORT DESCRIPTION HERE]",
-      description: BUG_DESCRIPTION
+      summary: "Bug: [summary here]",
+      description: BUG_DESCRIPTION,
+      issuetype: "10037"
     }
   },
   {
     id: "tmpl-002",
-    name: "Feature Request",
-    description: "Template for requesting new features or enhancements.",
+    name: "Epic",
+    description: "Epic template",
     fields: {
-      priority: "3",
-      // Medium priority
-      summary: "Feature: [SHORT DESCRIPTION HERE]",
-      description: TASK_DESCRIPTION
+      priority: "2",
+      summary: "Epic: [summary here]",
+      description: EPIC_DESCRIPTION,
+      issuetype: "10000"
     }
   },
   {
     id: "tmpl-003",
     name: "Task",
-    description: "General task template for development work.",
+    description: "Task template",
     fields: {
       priority: "3",
-      // Medium priority
-      summary: "Task: [SHORT DESCRIPTION HERE]",
-      description: TASK_DESCRIPTION
+      summary: "Task: [summary here]",
+      description: TASK_DESCRIPTION,
+      issuetype: "10035"
+    }
+  },
+  {
+    id: "tmpl-004",
+    name: "Story",
+    description: "Story template",
+    fields: {
+      priority: "3",
+      summary: "Story: [summary here]",
+      description: STORY_DESCRIPTION,
+      issuetype: "10034"
     }
   }
 ];
