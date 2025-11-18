@@ -108,13 +108,19 @@ onInit(
         priority.setValue(template.fields.priority);
       }
 
+      const issuetype = getFieldById('issuetype');
+      if (issuetype && template.fields.issuetype) {
+        console.log('Setting issue type to:', template.fields.issuetype);
+        issuetype.setValue(template.fields.issuetype);
+      }
+
     } catch (e) {
       console.error('Error during prefill initialization:', e);
     }
   },
   () => {
     // Watch these fields for changes
-    return ['description', 'summary', 'priority', 'customfield_10058'];
+    return ['issuetype', 'description', 'summary', 'priority', 'customfield_10058'];
   },
 );
 
@@ -164,12 +170,17 @@ onChange(
         priority.setValue(template.fields.priority);
       }
 
+      const issuetype = getFieldById('issuetype');
+      if (issuetype && template.fields.issuetype) {
+        issuetype.setValue(template.fields.issuetype);
+      }
+
       console.log('Template applied:', template.name);
     }
   },
   () => {
     // Watch all relevant fields
-    return ['description', 'summary', 'priority', 'customfield_10058'];
+    return ['issuetype', 'description', 'summary', 'priority', 'customfield_10058'];
   },
 );
 
