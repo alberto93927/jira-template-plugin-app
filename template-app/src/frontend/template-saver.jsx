@@ -3,20 +3,34 @@ import ForgeReconciler, { Text, Strong, Stack, Button, Textfield, Form, FormHead
 import { view, invoke, requestJira } from '@forge/bridge';
 
 const App = () => {
-  //State variables
   const [issueKey, setIssueKey] = useState('');
   const [templateName, setTemplateName] = useState('');
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState(null);
 
   useEffect(() => {
-    //Get the issue key from the context
+
     view.getContext()
       .then((context) => {
         console.log('Full context:', context);
-        const key = context?.platformContext?.issueKey;
+        
+        const key = 
+          context?.extension?.issue?.key ||
+          context?.platformContext?.issueKey ||
+          context?.issueKey;
+        
         console.log('Issue key extracted:', key);
-        setIssueKey(key || 'Unknown');
+        
+        if (key) {
+          setIssueKey(key);
+        } else {
+          console.warn('Issue key not found in context. Available structure:', {
+            hasExtension: !!context?.extension,
+            hasIssue: !!context?.extension?.issue,
+            extensionKeys: context?.extension ? Object.keys(context.extension) : null
+          });
+          setIssueKey('Unknown');
+        }
       })
       .catch((err) => {
         console.error('Error loading context:', err);
@@ -30,7 +44,6 @@ const App = () => {
       return;
     }
 
-    //Set the saving state to true
     setSaving(true);
     setMessage(null);
 

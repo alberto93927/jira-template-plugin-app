@@ -16,6 +16,19 @@ resolver.define('saveTemplate', async (req) => {
     const storageKey = `template:${templateData.name.toLowerCase().replace(/\s+/g, '-')}`;
     await storage.set(storageKey, templateData);
 
+    // Update the template index
+    const indexKey = 'template:index';
+    let index = await storage.get(indexKey).catch(() => ({ keys: [] }));
+    if (!index || !index.keys) {
+      index = { keys: [] };
+    }
+    
+    // Add the key to index if it doesn't exist
+    if (!index.keys.includes(storageKey)) {
+      index.keys.push(storageKey);
+      await storage.set(indexKey, index);
+    }
+
     console.log(`Template saved: ${templateData.name}`);
 
     return {
