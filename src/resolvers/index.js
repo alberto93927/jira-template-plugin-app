@@ -115,44 +115,6 @@ resolver.define('jira.issueTypesForProject', async ({ payload }) => {
   return types;
 });
 
-// In-memory storage for template selections during Create Issue flow
-// Key: `project:issueType`, Value: templateId
-// This is temporary storage cleared between sessions
-const templateSelectionCache = new Map();
-
-resolver.define('customfield.saveTemplateSelection', async ({ payload, context }) => {
-  const { templateId } = payload;
-  const projectId = context?.extension?.project?.id;
-  const issueTypeId = context?.extension?.issueType?.id;
-
-  if (!projectId || !issueTypeId) {
-    console.warn('[customfield.saveTemplateSelection] Missing context info');
-    return { ok: false, error: 'Missing project or issue type context' };
-  }
-
-  const cacheKey = `${projectId}:${issueTypeId}`;
-  console.log('[customfield.saveTemplateSelection] Saving template selection:', cacheKey, '=', templateId);
-  templateSelectionCache.set(cacheKey, templateId);
-
-  return { ok: true, cacheKey, templateId };
-});
-
-resolver.define('customfield.getTemplateSelection', async ({ context }) => {
-  const projectId = context?.extension?.project?.id;
-  const issueTypeId = context?.extension?.issueType?.id;
-
-  if (!projectId || !issueTypeId) {
-    console.warn('[customfield.getTemplateSelection] Missing context info');
-    return null;
-  }
-
-  const cacheKey = `${projectId}:${issueTypeId}`;
-  const templateId = templateSelectionCache.get(cacheKey);
-  console.log('[customfield.getTemplateSelection] Retrieved from cache:', cacheKey, '=', templateId);
-
-  return templateId || null;
-});
-
 // Template management resolvers
 resolver.define('template.getAll', async () => {
   const { getTemplates } = await import('./templateResolver');
