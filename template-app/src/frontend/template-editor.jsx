@@ -8,12 +8,17 @@ import ForgeReconciler, {
   Inline
 } from '@forge/react';
 import { invoke } from '@forge/bridge';
+import {
+  getFieldDisplayName,
+  getFieldType,
+  formatFieldValueForEditor,
+  parseFieldValueFromEditor,
+  validateTemplateName,
+  validateFieldValue
+} from './utils.js';
 
 const TemplateEditor = ({ template, onBack, onSave }) => {
-  console.log('TemplateEditor received template:', template);
-  console.log('Template ID:', template?.id);
-  
-  const [templateName, setTemplateName] = useState(template.name || '');
+  const [templateName, setTemplateName] = useState(template?.name || '');
   const [selectedFieldKey, setSelectedFieldKey] = useState('');
   const [selectedFieldValue, setSelectedFieldValue] = useState('');
   const [fieldEditorType, setFieldEditorType] = useState('text');
@@ -22,58 +27,16 @@ const TemplateEditor = ({ template, onBack, onSave }) => {
   const [message, setMessage] = useState(null);
   const [showFieldList, setShowFieldList] = useState(false);
 
-  const getFieldDisplayName = (fieldKey) => {
-    const fieldNameMap = {
-      'summary': 'Summary',
-      'description': 'Description',
-      'issuetype': 'Issue Type',
-      'priority': 'Priority',
-      'labels': 'Labels',
-      'components': 'Components',
-      'assignee': 'Assignee',
-      'reporter': 'Reporter',
-      'duedate': 'Due Date',
-      'fixVersions': 'Fix Versions',
-      'versions': 'Affects Versions',
-      'environment': 'Environment'
-    };
-    return fieldNameMap[fieldKey] || fieldKey.replace(/_/g, ' ').replace(/([A-Z])/g, ' $1').trim();
-  };
-
-  const getFieldType = (fieldKey, fieldValue) => {
-    if (fieldKey === 'description') return 'textarea';
-    if (Array.isArray(fieldValue)) return 'array';
-    if (typeof fieldValue === 'object' && fieldValue !== null) {
-      if (fieldValue.name) return 'object-with-name';
-      if (fieldValue.displayName) return 'object-with-display';
-    }
-    if (fieldKey.includes('date') || fieldKey === 'duedate') return 'date';
-    return 'text';
-  };
-
-  const formatFieldValueForEditor = (fieldValue, fieldType) => {
-    if (fieldValue === null || fieldValue === undefined) return '';
-    if (fieldType === 'object-with-name') return fieldValue.name || '';
-    if (fieldType === 'object-with-display') return fieldValue.displayName || '';
-    if (fieldType === 'array') return fieldValue.map(item => 
-      typeof item === 'object' ? (item.name || item.value || JSON.stringify(item)) : item
-    ).join(', ');
-    if (typeof fieldValue === 'object') return JSON.stringify(fieldValue);
-    return String(fieldValue);
-  };
-
-  const parseFieldValueFromEditor = (editedValue, fieldType, originalValue) => {
-    if (fieldType === 'array') {
-      return editedValue.split(',').map(item => item.trim()).filter(item => item);
-    }
-    if (fieldType === 'object-with-name' && originalValue) {
-      return { ...originalValue, name: editedValue };
-    }
-    if (fieldType === 'object-with-display' && originalValue) {
-      return { ...originalValue, displayName: editedValue };
-    }
-    return editedValue;
-  };
+  if (!template || !template.fields || typeof template.fields !== 'object') {
+    return (
+      <Stack space="space.300">
+        <Button appearance="subtle" onClick={onBack}>← Back to Templates</Button>
+        <SectionMessage appearance="error">
+          <Text>Invalid template data. This template may be corrupted.</Text>
+        </SectionMessage>
+      </Stack>
+    );
+  }
 
   const handleFieldSelect = (fieldKey) => {
     if (!template.fields || !fieldKey) return;
@@ -87,21 +50,18 @@ const TemplateEditor = ({ template, onBack, onSave }) => {
   };
 
   const handleSaveName = async () => {
-    if (!templateName.trim()) {
-      setMessage({ type: 'error', text: 'Template name cannot be empty' });
+    const nameValidation = validateTemplateName(templateName);
+    if (!nameValidation.valid) {
+      setMessage({ type: 'error', text: nameValidation.error });
       return;
     }
 
     setSavingName(true);
     setMessage(null);
     try {
-      console.log('Saving template name. Template ID:', template.id);
-      console.log('Template object:', template);
-      console.log('New template name:', templateName.trim());
-      
       const updatedTemplate = {
         ...template,
-        name: templateName.trim(),
+        name: nameValidation.sanitized,
         sourceIssueKey: template.sourceIssueKey, 
         createdAt: template.createdAt 
       };
@@ -118,8 +78,11 @@ const TemplateEditor = ({ template, onBack, onSave }) => {
         }
       }
     } catch (err) {
-      console.error('Error updating template name:', err);
-      setMessage({ type: 'error', text: err.message || 'Failed to update template name' });
+      if (err.message && (err.message.includes('quota') || err.message.includes('storage') || err.message.includes('limit'))) {
+        setMessage({ type: 'error', text: 'Storage limit reached. Please delete some templates or contact your administrator.' });
+      } else {
+        setMessage({ type: 'error', text: err.message || 'Failed to update template name' });
+      }
     } finally {
       setSavingName(false);
     }
@@ -135,11 +98,26 @@ const TemplateEditor = ({ template, onBack, onSave }) => {
     setMessage(null);
     try {
       const originalValue = template.fields[selectedFieldKey];
-      const parsedValue = parseFieldValueFromEditor(selectedFieldValue, fieldEditorType, originalValue);
+      let parsedValue;
+      
+      try {
+        parsedValue = parseFieldValueFromEditor(selectedFieldValue, fieldEditorType, originalValue);
+      } catch (parseErr) {
+        setMessage({ type: 'error', text: parseErr.message || 'Failed to parse field value' });
+        setSavingField(false);
+        return;
+      }
+      
+      const fieldValidation = validateFieldValue(parsedValue, fieldEditorType);
+      if (!fieldValidation.valid) {
+        setMessage({ type: 'error', text: fieldValidation.error });
+        setSavingField(false);
+        return;
+      }
       
       const updatedFields = {
         ...template.fields,
-        [selectedFieldKey]: parsedValue
+        [selectedFieldKey]: fieldValidation.sanitized
       };
 
       const updatedMetadata = { ...template.metadata };
@@ -161,9 +139,6 @@ const TemplateEditor = ({ template, onBack, onSave }) => {
         metadata: updatedMetadata
       };
 
-      console.log('Saving field. Template ID:', template.id);
-      console.log('Updated template:', updatedTemplate);
-      
       const result = await invoke('updateTemplate', {
         templateId: template.id,
         templateData: updatedTemplate
@@ -178,8 +153,11 @@ const TemplateEditor = ({ template, onBack, onSave }) => {
         }
       }
     } catch (err) {
-      console.error('Error updating field:', err);
-      setMessage({ type: 'error', text: err.message || 'Failed to update field' });
+      if (err.message && (err.message.includes('quota') || err.message.includes('storage') || err.message.includes('limit'))) {
+        setMessage({ type: 'error', text: 'Storage limit reached. Please delete some templates or contact your administrator.' });
+      } else {
+        setMessage({ type: 'error', text: err.message || 'Failed to update field' });
+      }
     } finally {
       setSavingField(false);
     }
@@ -212,7 +190,13 @@ const TemplateEditor = ({ template, onBack, onSave }) => {
             value={templateName}
             onChange={(e) => setTemplateName(e.target.value)}
             placeholder="Enter template name"
+            maxLength={200}
           />
+          {templateName.length > 200 && (
+            <Text size="small" color="color.text.warning">
+              Template name is too long (max 200 characters)
+            </Text>
+          )}
           <Button 
             appearance="primary"
             onClick={handleSaveName}

@@ -3,10 +3,36 @@ import { storage } from '@forge/api';
 
 const resolver = new Resolver();
 
-// Get all templates
+const validateTemplateData = (template) => {
+  if (!template) {
+    return { valid: false, error: 'Template data is missing' };
+  }
+  
+  if (typeof template !== 'object') {
+    return { valid: false, error: 'Template data must be an object' };
+  }
+  
+  if (!template.name || typeof template.name !== 'string') {
+    return { valid: false, error: 'Template must have a valid name' };
+  }
+  
+  if (!template.fields || typeof template.fields !== 'object') {
+    return { valid: false, error: 'Template must have a fields object' };
+  }
+  
+  return { valid: true };
+};
+
+const isStorageQuotaError = (error) => {
+  const errorMessage = error?.message?.toLowerCase() || '';
+  return errorMessage.includes('quota') || 
+         errorMessage.includes('storage') || 
+         errorMessage.includes('limit') ||
+         errorMessage.includes('exceeded');
+};
+
 resolver.define('getAllTemplates', async () => {
   try {
-    // Get the template index
     const indexKey = 'template:index';
     const index = await storage.get(indexKey).catch(() => ({ keys: [] }));
     
@@ -17,19 +43,25 @@ resolver.define('getAllTemplates', async () => {
       };
     }
 
-    // Fetch all templates from the index
     const templatePromises = index.keys.map(async (key) => {
       try {
         const template = await storage.get(key);
-        if (template) {
-          return {
-            id: key,
-            ...template
-          };
+        if (!template) {
+          return null;
         }
-        return null;
+        
+        const validation = validateTemplateData(template);
+        if (!validation.valid) {
+          console.warn(`Template ${key} is corrupted: ${validation.error}`);
+          return null;
+        }
+        
+        return {
+          id: key,
+          ...template
+        };
       } catch (err) {
-        console.warn(`Failed to fetch template ${key}:`, err);
+        console.warn(`Error fetching template ${key}: ${err.message}`);
         return null;
       }
     });
@@ -44,12 +76,51 @@ resolver.define('getAllTemplates', async () => {
       )
     };
   } catch (error) {
-    console.error('Error fetching templates:', error);
+    if (isStorageQuotaError(error)) {
+      throw new Error('Storage quota exceeded. Please delete some templates or contact your administrator.');
+    }
     throw new Error(`Failed to fetch templates: ${error.message}`);
   }
 });
 
-// Update a template
+const MAX_TEMPLATE_NAME_LENGTH = 200;
+const MIN_TEMPLATE_NAME_LENGTH = 1;
+const INVALID_CHARS = /[<>:"/\\|?*\x00-\x1f]/;
+
+const validateTemplateName = (name) => {
+  const trimmed = name?.trim();
+  
+  if (!trimmed) {
+    return { valid: false, error: 'Template name cannot be empty' };
+  }
+  
+  if (trimmed.length < MIN_TEMPLATE_NAME_LENGTH) {
+    return { valid: false, error: 'Template name is too short' };
+  }
+  
+  if (trimmed.length > MAX_TEMPLATE_NAME_LENGTH) {
+    return { valid: false, error: `Template name must be ${MAX_TEMPLATE_NAME_LENGTH} characters or less` };
+  }
+  
+  if (INVALID_CHARS.test(trimmed)) {
+    return { valid: false, error: 'Template name contains invalid characters' };
+  }
+  
+  return { valid: true, sanitized: trimmed };
+};
+
+const sanitizeTemplateNameForStorage = (name) => {
+  if (!name) return '';
+  return name
+    .toLowerCase()
+    .trim()
+    .replace(/[<>:"/\\|?*\x00-\x1f]/g, '-')
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '')
+    .substring(0, 200);
+};
+
 resolver.define('updateTemplate', async (req) => {
   const { templateId, templateData } = req.payload;
 
@@ -57,66 +128,64 @@ resolver.define('updateTemplate', async (req) => {
     throw new Error('Template ID and data are required');
   }
 
+  if (templateData.name) {
+    const nameValidation = validateTemplateName(templateData.name);
+    if (!nameValidation.valid) {
+      throw new Error(nameValidation.error);
+    }
+    templateData.name = nameValidation.sanitized;
+  }
+
+  const dataValidation = validateTemplateData(templateData);
+  if (!dataValidation.valid) {
+    throw new Error(dataValidation.error);
+  }
+
   try {
-    console.log('updateTemplate called with templateId:', templateId);
-    console.log('templateData:', templateData);
-    
     let existingTemplate = await storage.get(templateId);
     let actualTemplateId = templateId;
     
-    // If template not found with the given ID, try to find it in the index
-    // This handles cases where the name changed but frontend still has old ID
     if (!existingTemplate) {
       const indexKey = 'template:index';
       const index = await storage.get(indexKey).catch(() => ({ keys: [] }));
-      console.log('Template not found with ID:', templateId);
-      console.log('Checking index keys:', index?.keys);
-      console.log('Template data being sent:', templateData);
       
-      // Try to find template by checking all keys in the index
-      // This handles cases where the frontend has a stale ID
       if (index.keys && index.keys.length > 0) {
         for (const key of index.keys) {
           try {
             const candidate = await storage.get(key);
             if (candidate) {
-              // Match by sourceIssueKey (most reliable identifier)
-              if (templateData && templateData.sourceIssueKey && candidate.sourceIssueKey === templateData.sourceIssueKey) {
-                console.log('Found template by sourceIssueKey match:', key);
+              if (templateData?.sourceIssueKey && candidate.sourceIssueKey === templateData.sourceIssueKey) {
                 existingTemplate = candidate;
                 actualTemplateId = key;
                 break;
               }
-              // Match by createdAt if available (unique identifier)
-              if (templateData && templateData.createdAt && candidate.createdAt === templateData.createdAt) {
-                console.log('Found template by createdAt match:', key);
+              if (templateData?.createdAt && candidate.createdAt === templateData.createdAt) {
                 existingTemplate = candidate;
                 actualTemplateId = key;
                 break;
               }
             }
           } catch (err) {
-            console.warn(`Error checking template ${key}:`, err);
           }
         }
         
-        // If still not found and there's only one template, use it
         if (!existingTemplate && index.keys.length === 1) {
           const key = index.keys[0];
-          console.log('Only one template found, using it:', key);
           existingTemplate = await storage.get(key);
           actualTemplateId = key;
         }
       }
     }
     
-    console.log('Existing template from storage:', existingTemplate);
-    console.log('Using templateId:', actualTemplateId);
-    
     if (!existingTemplate) {
       const indexKey = 'template:index';
       const index = await storage.get(indexKey).catch(() => ({ keys: [] }));
-      throw new Error(`Template not found. TemplateId: ${templateId}, Available keys: ${JSON.stringify(index?.keys || [])}`);
+      throw new Error(`Template not found. TemplateId: ${templateId}`);
+    }
+    
+    const existingValidation = validateTemplateData(existingTemplate);
+    if (!existingValidation.valid) {
+      throw new Error(`Existing template is corrupted: ${existingValidation.error}`);
     }
 
     const updatedTemplate = {
@@ -130,39 +199,43 @@ resolver.define('updateTemplate', async (req) => {
       updatedTemplate.name = existingTemplate.name;
     }
 
-    // If name changed, we need to update the storage key
     if (existingTemplate.name && existingTemplate.name !== updatedTemplate.name) {
-      const newStorageKey = `template:${updatedTemplate.name.toLowerCase().replace(/\s+/g, '-')}`;
+      const sanitizedName = sanitizeTemplateNameForStorage(updatedTemplate.name);
+      const newStorageKey = `template:${sanitizedName}`;
       
-      // Save to new key
-      await storage.set(newStorageKey, updatedTemplate);
-      
-      // Update the template index
-      const indexKey = 'template:index';
-      const index = await storage.get(indexKey).catch(() => ({ keys: [] }));
-      if (!index || !index.keys) {
-        index.keys = [];
+      try {
+        await storage.set(newStorageKey, updatedTemplate);
+        
+        const indexKey = 'template:index';
+        const index = await storage.get(indexKey).catch(() => ({ keys: [] }));
+        if (!index || !index.keys) {
+          index.keys = [];
+        }
+        
+        index.keys = index.keys.filter(key => key !== actualTemplateId);
+        if (!index.keys.includes(newStorageKey)) {
+          index.keys.push(newStorageKey);
+        }
+        await storage.set(indexKey, index);
+        
+        if (actualTemplateId !== newStorageKey) {
+          await storage.delete(actualTemplateId);
+        }
+        
+        return {
+          success: true,
+          message: `Template "${updatedTemplate.name}" updated successfully!`,
+          templateId: newStorageKey
+        };
+      } catch (storageError) {
+        if (isStorageQuotaError(storageError)) {
+          throw new Error('Storage quota exceeded. Please delete some templates or contact your administrator.');
+        }
+        throw storageError;
       }
-      
-      // Remove old key and add new key
-      index.keys = index.keys.filter(key => key !== actualTemplateId);
-      if (!index.keys.includes(newStorageKey)) {
-        index.keys.push(newStorageKey);
-      }
-      await storage.set(indexKey, index);
-      
-      // Delete old key (only if it's different from new key)
-      if (actualTemplateId !== newStorageKey) {
-        await storage.delete(actualTemplateId);
-      }
-      
-      return {
-        success: true,
-        message: `Template "${updatedTemplate.name}" updated successfully!`,
-        templateId: newStorageKey
-      };
-    } else {
-      // Just update the existing template using the actual template ID
+    }
+    
+    try {
       await storage.set(actualTemplateId, updatedTemplate);
       
       return {
@@ -170,31 +243,122 @@ resolver.define('updateTemplate', async (req) => {
         message: `Template "${updatedTemplate.name}" updated successfully!`,
         templateId: actualTemplateId
       };
+    } catch (storageError) {
+      if (isStorageQuotaError(storageError)) {
+        throw new Error('Storage quota exceeded. Please delete some templates or contact your administrator.');
+      }
+      throw storageError;
     }
   } catch (error) {
-    console.error('Error updating template:', error);
+    if (isStorageQuotaError(error)) {
+      throw new Error('Storage quota exceeded. Please delete some templates or contact your administrator.');
+    }
     throw new Error(`Failed to update template: ${error.message}`);
   }
 });
 
-// Delete a template
 resolver.define('deleteTemplate', async (req) => {
-  const { templateId } = req.payload;
+  const { templateId, templateName } = req.payload;
 
-  if (!templateId) {
-    throw new Error('Template ID is required');
+  if (!templateId && !templateName) {
+    throw new Error('Template ID or name is required');
   }
 
   try {
-    // Delete the template
-    await storage.delete(templateId);
+    let actualTemplateId = templateId;
+    let existingTemplate = null;
+
+    // Try to get template by ID first
+    if (templateId) {
+      existingTemplate = await storage.get(templateId);
+      if (existingTemplate) {
+        actualTemplateId = templateId;
+      }
+    }
+
+    // If not found by ID, try generating storage key from name
+    if (!existingTemplate && templateName) {
+      const sanitizedName = sanitizeTemplateNameForStorage(templateName);
+      const generatedKey = `template:${sanitizedName}`;
+      const candidate = await storage.get(generatedKey);
+      if (candidate) {
+        existingTemplate = candidate;
+        actualTemplateId = generatedKey;
+      }
+    }
+
+    // If still not found, search all templates in index by name
+    if (!existingTemplate && templateName) {
+      const indexKey = 'template:index';
+      const index = await storage.get(indexKey).catch(() => ({ keys: [] }));
+      
+      if (index && index.keys && index.keys.length > 0) {
+        for (const key of index.keys) {
+          try {
+            const candidate = await storage.get(key);
+            if (candidate && candidate.name === templateName) {
+              existingTemplate = candidate;
+              actualTemplateId = key;
+              break;
+            }
+          } catch (err) {
+            // Continue searching
+          }
+        }
+      }
+    }
+
+    // Last resort: search all templates in index
+    if (!existingTemplate) {
+      const indexKey = 'template:index';
+      const index = await storage.get(indexKey).catch(() => ({ keys: [] }));
+      
+      if (index && index.keys && index.keys.length > 0) {
+        for (const key of index.keys) {
+          try {
+            const candidate = await storage.get(key);
+            if (candidate) {
+              // Match by ID if provided
+              if (templateId && key === templateId) {
+                existingTemplate = candidate;
+                actualTemplateId = key;
+                break;
+              }
+              // Match by name if provided (case-insensitive trim comparison)
+              if (templateName && candidate.name && 
+                  candidate.name.trim().toLowerCase() === templateName.trim().toLowerCase()) {
+                existingTemplate = candidate;
+                actualTemplateId = key;
+                break;
+              }
+            }
+          } catch (err) {
+            // Continue searching
+          }
+        }
+      }
+    }
+
+    if (!existingTemplate) {
+      throw new Error(`Template not found${templateId ? ` with ID: ${templateId}` : ''}${templateName ? ` with name: ${templateName}` : ''}`);
+    }
+
+    await storage.delete(actualTemplateId);
     
-    // Update the template index
+    const verifyDelete = await storage.get(actualTemplateId);
+    if (verifyDelete) {
+      throw new Error('Template deletion failed - template still exists');
+    }
+    
     const indexKey = 'template:index';
     const index = await storage.get(indexKey).catch(() => ({ keys: [] }));
     if (index && index.keys) {
-      index.keys = index.keys.filter(key => key !== templateId);
-      await storage.set(indexKey, index);
+      const originalLength = index.keys.length;
+      index.keys = index.keys.filter(key => key !== actualTemplateId);
+      
+      if (index.keys.length !== originalLength) {
+        await storage.set(indexKey, index);
+      }
     }
     
     return {
@@ -202,7 +366,6 @@ resolver.define('deleteTemplate', async (req) => {
       message: 'Template deleted successfully!'
     };
   } catch (error) {
-    console.error('Error deleting template:', error);
     throw new Error(`Failed to delete template: ${error.message}`);
   }
 });

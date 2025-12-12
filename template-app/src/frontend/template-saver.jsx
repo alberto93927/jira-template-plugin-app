@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import ForgeReconciler, { Text, Strong, Stack, Button, Textfield, Form, FormHeader, FormSection, FormFooter, SectionMessage } from '@forge/react';
 import { view, invoke, requestJira } from '@forge/bridge';
+import { validateTemplateName, validateTemplateData, validateFieldValue, CORE_FIELDS, isFieldEmpty } from './utils.js';
 
 const App = () => {
   const [issueKey, setIssueKey] = useState('');
@@ -9,38 +10,28 @@ const App = () => {
   const [message, setMessage] = useState(null);
 
   useEffect(() => {
-
     view.getContext()
       .then((context) => {
-        console.log('Full context:', context);
-        
         const key = 
           context?.extension?.issue?.key ||
           context?.platformContext?.issueKey ||
           context?.issueKey;
         
-        console.log('Issue key extracted:', key);
-        
         if (key) {
           setIssueKey(key);
         } else {
-          console.warn('Issue key not found in context. Available structure:', {
-            hasExtension: !!context?.extension,
-            hasIssue: !!context?.extension?.issue,
-            extensionKeys: context?.extension ? Object.keys(context.extension) : null
-          });
           setIssueKey('Unknown');
         }
       })
       .catch((err) => {
-        console.error('Error loading context:', err);
         setMessage({ type: 'error', text: `Failed to load context: ${err.message}` });
       });
   }, []);
 
   const handleSaveTemplate = async () => {
-    if (!templateName.trim()) {
-      setMessage({ type: 'error', text: 'Please enter a template name' });
+    const nameValidation = validateTemplateName(templateName);
+    if (!nameValidation.valid) {
+      setMessage({ type: 'error', text: nameValidation.error });
       return;
     }
 
@@ -48,15 +39,11 @@ const App = () => {
     setMessage(null);
 
     try {
-      console.log('Attempting to fetch issue with key:', issueKey);
-      
       if (!issueKey || issueKey === 'Unknown') {
         throw new Error('No valid issue key found. Please open this from a Jira issue.');
       }
       
       const response = await requestJira(`/rest/api/3/issue/${issueKey}`);
-      
-      console.log('Response status:', response.status);
       
       if (!response.ok) {
         throw new Error(`Failed to fetch issue: ${response.status} ${response.statusText}`);
@@ -65,10 +52,9 @@ const App = () => {
       const issueData = await response.json();
       
       if (!issueData || !issueData.fields) {
-        console.error('Invalid issue data:', issueData);
         throw new Error('Invalid issue data received from Jira');
       }
-      //fields to exclude from the template
+
       const excludedFields = [
         'created', 'updated', 'creator', 'reporter', 
         'statuscategorychangedate', 'watches', 'votes',
@@ -78,19 +64,36 @@ const App = () => {
         'aggregatetimeestimate', 'aggregatetimespent', 'workratio',
         'progress', 'aggregateprogress', 'thumbnail'
       ];
+      
       const allFields = {};
-      //loop through the fields and add them to the template data
+      const fieldErrors = [];
+      
       for (const [fieldKey, fieldValue] of Object.entries(issueData.fields)) {
         if (excludedFields.includes(fieldKey)) {
           continue;
         }
         
-        allFields[fieldKey] = fieldValue;
+        const fieldValidation = validateFieldValue(fieldValue);
+        if (!fieldValidation.valid) {
+          fieldErrors.push(`${fieldKey}: ${fieldValidation.error}`);
+          continue;
+        }
+        
+        const sanitizedValue = fieldValidation.sanitized;
+        const isCoreField = CORE_FIELDS.includes(fieldKey);
+        
+        // Two-tier approach: Always save core fields, only save non-empty other fields
+        if (isCoreField || !isFieldEmpty(sanitizedValue)) {
+          allFields[fieldKey] = sanitizedValue;
+        }
       }
-
-      //template data to save
+      
+      if (fieldErrors.length > 0) {
+        console.warn('Some fields were skipped due to validation errors:', fieldErrors);
+      }
+      
       const templateData = {
-        name: templateName.trim(),
+        name: nameValidation.sanitized,
         createdAt: new Date().toISOString(),
         sourceIssueKey: issueKey,
         fields: allFields,
@@ -102,15 +105,31 @@ const App = () => {
         }
       };
 
+      const dataValidation = validateTemplateData(templateData);
+      if (!dataValidation.valid) {
+        throw new Error(dataValidation.error);
+      }
+
       const result = await invoke('saveTemplate', { templateData });
-      setMessage({ 
-        type: 'success', 
-        text: `${result.message}.` 
-      });
+      
+      if (fieldErrors.length > 0) {
+        setMessage({ 
+          type: 'success', 
+          text: `${result.message} (Note: ${fieldErrors.length} field(s) were skipped due to size/complexity limits)`
+        });
+      } else {
+        setMessage({ 
+          type: 'success', 
+          text: result.message
+        });
+      }
       setTemplateName('');
     } catch (err) {
-      console.error('Error saving template:', err);
-      setMessage({ type: 'error', text: err.message || 'Failed to save template' });
+      if (err.message && (err.message.includes('quota') || err.message.includes('storage') || err.message.includes('limit'))) {
+        setMessage({ type: 'error', text: 'Storage limit reached. Please delete some templates or contact your administrator.' });
+      } else {
+        setMessage({ type: 'error', text: err.message || 'Failed to save template' });
+      }
     } finally {
       setSaving(false);
     }
@@ -154,6 +173,11 @@ const App = () => {
         >
           Save Template
         </Button>
+        {templateName.length > 200 && (
+          <Text size="small" color="color.text.warning">
+            Template name is too long (max 200 characters)
+          </Text>
+        )}
       </FormFooter>
     </Form>
   );
