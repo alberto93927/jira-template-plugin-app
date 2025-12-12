@@ -179,11 +179,3 @@ export const TEMPLATES = [
 export const getTemplateById = (templateId) => {
   return TEMPLATES.find((tmpl) => tmpl.id === templateId);
 };
-
-// Helper function to get all template names and IDs (for dropdown)
-export const getTemplateOptions = () => {
-  return TEMPLATES.map((tmpl) => ({
-    id: tmpl.id,
-    name: tmpl.name,
-  }));
-};
