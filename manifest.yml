@@ -25,18 +25,6 @@ modules:
       resolver: { function: resolver }
       render: native
 
-  jira:projectSettingsPage:
-    - key: tmpl-project-settings
-      title: Template Settings
-      resource: main
-      resolver: { function: resolver }
-      render: native
-
-  jira:uiModifications:
-    - key: tmpl-create-uim
-      title: Template fill during Create
-      resource: uim-bundle
-
   function:
     - key: resolver
       handler: resolvers/index.handler
@@ -44,8 +32,6 @@ modules:
 resources:
   - key: main
     path: src/frontend/index.jsx
-  - key: uim-bundle
-    path: static/uim/dist
 
 permissions:
   scopes:
