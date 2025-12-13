@@ -12,7 +12,7 @@ import { CreateIssueModal } from '@forge/jira-bridge';
 import TemplateSaver from './template-saver.jsx';
 import TemplateEditor from './template-editor.jsx';
 
-const ApplyTemplate = ({ issueId, projectId }) => {
+const ApplyTemplate = ({ issueId }) => {
   const [msg, setMsg] = useState('Pick a template…');
   return (
     <Stack space="space.200">
@@ -50,11 +50,10 @@ const TemplateCreation = ({ projectId }) => {
           fields: t.fields || {},
           metadata: t.metadata || {},
           sourceIssueKey: t.sourceIssueKey || 'N/A',
-          createdAt: t.createdAt || new Date().toISOString(),
-          source: 'storage' // All templates from getAllTemplates are from storage
+          createdAt: t.createdAt || new Date().toISOString()
         }));
 
-        console.log(`[TemplateCreation] ✅ Loaded ${sanitizedTemplates.length} template(s) from storage`);
+        console.log(`[TemplateCreation] Loaded ${sanitizedTemplates.length} template(s)`);
         setTemplates(sanitizedTemplates);
       } else {
         setError(result?.error || 'Failed to load templates');
@@ -241,8 +240,8 @@ const App = () => {
   const issueId = platform.issueId;
 
   // Simple router by module key (keeps one bundle for all modules)
-  if (moduleKey === 'tmpl-create-uim') return <ApplyTemplate issueId={issueId} projectId={projectId} />;
-  if (moduleKey === 'tmpl-apply') return <ApplyTemplate issueId={issueId} projectId={projectId} />;
+  if (moduleKey === 'tmpl-create-uim') return <ApplyTemplate issueId={issueId} />;
+  if (moduleKey === 'tmpl-apply') return <ApplyTemplate issueId={issueId} />;
   if (moduleKey === 'tmpl-project-library') return <TemplateCreation projectId={projectId} />;
   if (moduleKey === 'tmpl-save') return <TemplateSaver issueId={issueId} />;
 
