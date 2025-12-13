@@ -5,10 +5,12 @@ import ForgeReconciler, {
   Button,
   Stack,
   SectionMessage,
-  Heading,
+  Inline,
 } from '@forge/react';
 import { invoke, view } from '@forge/bridge';
 import { CreateIssueModal } from '@forge/jira-bridge';
+import TemplateSaver from './template-saver.jsx';
+import TemplateEditor from './template-editor.jsx';
 
 const ApplyTemplate = ({ issueId, projectId }) => {
   const [msg, setMsg] = useState('Pick a template…');
@@ -29,32 +31,39 @@ const TemplateCreation = ({ projectId }) => {
   const [templates, setTemplates] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [seeding, setSeeding] = useState(false);
-  const [seedResult, setSeedResult] = useState(null);
+  const [editingTemplateId, setEditingTemplateId] = useState(null);
+  const [message, setMessage] = useState(null);
 
   const loadTemplates = async () => {
     try {
       setLoading(true);
-      const allTemplates = await invoke('template.getAll');
+      setMessage(null);
 
-      // PoC: Log source information
-      const sources = allTemplates?.reduce((acc, t) => {
-        acc[t.source || 'unknown'] = (acc[t.source || 'unknown'] || 0) + 1;
-        return acc;
-      }, {});
+      // Use getAllTemplates for full template data including metadata
+      const result = await invoke('getAllTemplates');
 
-      if (sources.storage) {
-        console.log(`[TemplateCreation] ✅ STORAGE - Loaded ${sources.storage} template(s) from Atlassian Storage`);
+      if (result && result.success && Array.isArray(result.templates)) {
+        const sanitizedTemplates = result.templates.map(t => ({
+          id: t.id,
+          name: t.name || 'Unnamed Template',
+          description: t.metadata?.description || `Template from ${t.sourceIssueKey || 'unknown'}`,
+          fields: t.fields || {},
+          metadata: t.metadata || {},
+          sourceIssueKey: t.sourceIssueKey || 'N/A',
+          createdAt: t.createdAt || new Date().toISOString(),
+          source: 'storage' // All templates from getAllTemplates are from storage
+        }));
+
+        console.log(`[TemplateCreation] ✅ Loaded ${sanitizedTemplates.length} template(s) from storage`);
+        setTemplates(sanitizedTemplates);
+      } else {
+        setError(result?.error || 'Failed to load templates');
+        setTemplates([]);
       }
-      if (sources.hardcoded) {
-        console.log(`[TemplateCreation] ⚠️  HARDCODED - Loaded ${sources.hardcoded} template(s) from hardcoded fallback`);
-      }
-
-      console.log('[TemplateCreation] Template details:', allTemplates);
-      setTemplates(allTemplates || []);
     } catch (e) {
       console.error('[TemplateCreation] Failed to load templates:', e);
       setError(`Failed to load templates: ${e.message || e}`);
+      setTemplates([]);
     } finally {
       setLoading(false);
     }
@@ -64,20 +73,25 @@ const TemplateCreation = ({ projectId }) => {
     loadTemplates();
   }, []);
 
-  const handleSeedStorage = async () => {
-    setSeeding(true);
-    setSeedResult(null);
+  const handleDelete = async (template) => {
+    if (!window.confirm(`Are you sure you want to delete "${template.name}"?`)) {
+      return;
+    }
+
     try {
-      const response = await invoke('template.seedStorage');
-      console.log('[TemplateCreation] Seed result:', response);
-      setSeedResult({ type: 'success', data: response });
-      // Reload templates after seeding
-      await loadTemplates();
+      const result = await invoke('deleteTemplate', {
+        templateId: template.id,
+        templateName: template.name
+      });
+
+      if (result && result.success) {
+        setMessage({ type: 'success', text: result.message || 'Template deleted successfully!' });
+        await loadTemplates();
+      } else {
+        setMessage({ type: 'error', text: result?.error || 'Failed to delete template' });
+      }
     } catch (err) {
-      console.error('[TemplateCreation] Seed failed:', err);
-      setSeedResult({ type: 'error', message: err.message || 'Failed to seed templates' });
-    } finally {
-      setSeeding(false);
+      setMessage({ type: 'error', text: err.message || 'Failed to delete template' });
     }
   };
 
@@ -87,15 +101,7 @@ const TemplateCreation = ({ projectId }) => {
 
       // Fetch the full template data
       const template = await invoke('template.getById', { templateId });
-
-      // PoC: Log source of template being used
-      if (template.source === 'storage') {
-        console.log(`[TemplateCreation] ✅ STORAGE - Using template from Atlassian Storage: ${template.name}`);
-      } else if (template.source === 'hardcoded') {
-        console.log(`[TemplateCreation] ⚠️  HARDCODED - Using template from hardcoded fallback: ${template.name}`);
-      }
-
-      console.log('[TemplateCreation] Fetched template data:', template);
+      console.log('[TemplateCreation] Using template from storage:', template.name);
 
       if (!template) {
         setError('Template not found');
@@ -127,32 +133,39 @@ const TemplateCreation = ({ projectId }) => {
     }
   };
 
+  // If editing a template, show the editor
+  const currentEditingTemplate = templates.find(t => t.id === editingTemplateId);
+  if (editingTemplateId && currentEditingTemplate) {
+    return (
+      <TemplateEditor
+        template={currentEditingTemplate}
+        onBack={() => {
+          setEditingTemplateId(null);
+          loadTemplates();
+        }}
+        onSave={async () => {
+          await loadTemplates();
+          const updatedTemplates = templates;
+          const updatedTemplate = updatedTemplates.find(t =>
+            t.name === currentEditingTemplate.name ||
+            t.id === currentEditingTemplate.id ||
+            t.sourceIssueKey === currentEditingTemplate.sourceIssueKey
+          );
+          if (updatedTemplate) {
+            setEditingTemplateId(updatedTemplate.id);
+          }
+        }}
+      />
+    );
+  }
+
   return (
     <Stack space="space.400">
-      <Heading as="h1">Team Template Library</Heading>
-      <Text>Select a template to create a new issue with pre-filled fields.</Text>
+      <Text>Browse, manage, and create issues from templates.</Text>
 
-      {/* PoC: Storage Seed Button */}
-      <SectionMessage appearance="information">
-        <Stack space="space.200">
-          <Text weight="bold">PoC Testing: Seed Templates to Storage</Text>
-          <Button
-            appearance="default"
-            onClick={handleSeedStorage}
-            isDisabled={seeding}
-          >
-            {seeding ? 'Seeding...' : 'Seed Storage'}
-          </Button>
-        </Stack>
-      </SectionMessage>
-
-      {seedResult && (
-        <SectionMessage appearance={seedResult.type === 'success' ? 'success' : 'error'}>
-          {seedResult.type === 'success' ? (
-            <Text>✅ {seedResult.data.message} ({seedResult.data.count} templates)</Text>
-          ) : (
-            <Text>❌ {seedResult.message}</Text>
-          )}
+      {message && (
+        <SectionMessage appearance={message.type === 'error' ? 'error' : 'success'}>
+          <Text>{message.text}</Text>
         </SectionMessage>
       )}
 
@@ -160,8 +173,8 @@ const TemplateCreation = ({ projectId }) => {
       {error && <SectionMessage appearance="error">{error}</SectionMessage>}
 
       {!loading && !error && templates.length === 0 && (
-        <SectionMessage appearance="warning">
-          <Text>No templates available. Try seeding storage first.</Text>
+        <SectionMessage appearance="information">
+          <Text>No templates found. Create your first template by using "Save as template" from any issue!</Text>
         </SectionMessage>
       )}
 
@@ -169,24 +182,31 @@ const TemplateCreation = ({ projectId }) => {
         <Stack space="space.200">
           {templates.map((template) => (
             <Stack key={template.id} space="space.100" style={{ padding: '12px', border: '1px solid #ddd', borderRadius: '4px' }}>
-              <Stack space="space.050">
-                <Text weight="bold">{template.name}</Text>
-                {/* PoC: Show source badge */}
-                <Text size="small" style={{
-                  color: template.source === 'storage' ? '#36B37E' : '#FF991F',
-                  fontWeight: 'bold',
-                  fontSize: '10px'
-                }}>
-                  {template.source === 'storage' ? '✅ FROM STORAGE' : '⚠️  FROM HARDCODED FALLBACK'}
-                </Text>
+              <Text weight="bold">{template.name}</Text>
+              <Text size="small">Source: {template.sourceIssueKey}</Text>
+              <Text size="small">Created: {new Date(template.createdAt).toLocaleDateString()}</Text>
+              <Stack space="space.100">
+                <Button
+                  appearance="primary"
+                  onClick={() => handleCreateFromTemplate(template.id)}
+                >
+                  Create Issue
+                </Button>
+                <Inline space="space.050">
+                  <Button
+                    appearance="default"
+                    onClick={() => setEditingTemplateId(template.id)}
+                  >
+                    Edit
+                  </Button>
+                  <Button
+                    appearance="danger"
+                    onClick={() => handleDelete(template)}
+                  >
+                    Delete
+                  </Button>
+                </Inline>
               </Stack>
-              <Text size="small">{template.description || 'No description'}</Text>
-              <Button
-                appearance="primary"
-                onClick={() => handleCreateFromTemplate(template.id)}
-              >
-                Create Issue
-              </Button>
             </Stack>
           ))}
         </Stack>
@@ -224,6 +244,7 @@ const App = () => {
   if (moduleKey === 'tmpl-create-uim') return <ApplyTemplate issueId={issueId} projectId={projectId} />;
   if (moduleKey === 'tmpl-apply') return <ApplyTemplate issueId={issueId} projectId={projectId} />;
   if (moduleKey === 'tmpl-project-library') return <TemplateCreation projectId={projectId} />;
+  if (moduleKey === 'tmpl-save') return <TemplateSaver issueId={issueId} />;
 
   return <></>;
 };
