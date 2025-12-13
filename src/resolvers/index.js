@@ -27,4 +27,10 @@ resolver.define('template.getSuggestions', async ({ payload }) => {
   return getTemplateSuggestions({ issueTypeName });
 });
 
+// Storage seed resolver (for PoC testing)
+resolver.define('template.seedStorage', async () => {
+  const { seedTemplates } = await import('./templateResolver');
+  return seedTemplates();
+});
+
 export const handler = resolver.getDefinitions();
