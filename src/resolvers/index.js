@@ -33,4 +33,28 @@ resolver.define('template.seedStorage', async () => {
   return seedTemplates();
 });
 
+// Template CRUD resolvers
+resolver.define('getAllTemplates', async () => {
+  const { getAllTemplates } = await import('./templateCrudResolver');
+  return getAllTemplates();
+});
+
+resolver.define('saveTemplate', async ({ payload }) => {
+  const { templateData } = payload;
+  const { saveTemplate } = await import('./templateCrudResolver');
+  return saveTemplate({ templateData });
+});
+
+resolver.define('updateTemplate', async ({ payload }) => {
+  const { templateId, templateData } = payload;
+  const { updateTemplate } = await import('./templateCrudResolver');
+  return updateTemplate({ templateId, templateData });
+});
+
+resolver.define('deleteTemplate', async ({ payload }) => {
+  const { templateId, templateName } = payload;
+  const { deleteTemplate } = await import('./templateCrudResolver');
+  return deleteTemplate({ templateId, templateName });
+});
+
 export const handler = resolver.getDefinitions();
