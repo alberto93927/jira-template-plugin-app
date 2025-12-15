@@ -319,42 +319,7 @@ export const updateTemplate = async ({ templateId, templateData }) => {
       updatedTemplate.name = existingTemplate.name;
     }
 
-    if (existingTemplate.name && existingTemplate.name !== updatedTemplate.name) {
-      const sanitizedName = sanitizeTemplateNameForStorage(updatedTemplate.name);
-      const newStorageKey = `template:${sanitizedName}`;
-
-      try {
-        await storage.set(newStorageKey, updatedTemplate);
-
-        const indexKey = 'template:index';
-        const index = await storage.get(indexKey).catch(() => ({ keys: [] }));
-        if (!index || !index.keys) {
-          index.keys = [];
-        }
-
-        index.keys = index.keys.filter(key => key !== actualTemplateId);
-        if (!index.keys.includes(newStorageKey)) {
-          index.keys.push(newStorageKey);
-        }
-        await storage.set(indexKey, index);
-
-        if (actualTemplateId !== newStorageKey) {
-          await storage.delete(actualTemplateId);
-        }
-
-        return {
-          success: true,
-          message: `Template "${updatedTemplate.name}" updated successfully!`,
-          templateId: newStorageKey
-        };
-      } catch (storageError) {
-        if (isStorageQuotaError(storageError)) {
-          throw new Error('Storage quota exceeded. Please delete some templates or contact your administrator.');
-        }
-        throw storageError;
-      }
-    }
-
+    // Always update in place - storage key (ID) stays constant even if name changes
     try {
       await storage.set(actualTemplateId, updatedTemplate);
 

@@ -55,14 +55,17 @@ const TemplateCreation = ({ projectId }) => {
 
         console.log(`[TemplateCreation] Loaded ${sanitizedTemplates.length} template(s)`);
         setTemplates(sanitizedTemplates);
+        return sanitizedTemplates; // Return the loaded templates
       } else {
         setError(result?.error || 'Failed to load templates');
         setTemplates([]);
+        return [];
       }
     } catch (e) {
       console.error('[TemplateCreation] Failed to load templates:', e);
       setError(`Failed to load templates: ${e.message || e}`);
       setTemplates([]);
+      return [];
     } finally {
       setLoading(false);
     }
@@ -96,11 +99,12 @@ const TemplateCreation = ({ projectId }) => {
 
   const handleCreateFromTemplate = async (templateId) => {
     try {
-      console.log('[TemplateCreation] Creating issue from template:', templateId);
+      console.log('[TemplateCreation] Creating issue from template ID:', templateId);
+      console.log('[TemplateCreation] Current templates in state:', templates);
 
       // Fetch the full template data
       const template = await invoke('template.getById', { templateId });
-      console.log('[TemplateCreation] Using template from storage:', template.name);
+      console.log('[TemplateCreation] Fetched template from storage:', template);
 
       if (!template) {
         setError('Template not found');
@@ -138,21 +142,16 @@ const TemplateCreation = ({ projectId }) => {
     return (
       <TemplateEditor
         template={currentEditingTemplate}
-        onBack={() => {
+        onBack={async () => {
           setEditingTemplateId(null);
-          loadTemplates();
+          await loadTemplates();
         }}
         onSave={async () => {
+          // After saving changes (especially renaming), exit editing mode
+          // and reload the template list to get fresh IDs
+          console.log('[TemplateCreation] Template saved, exiting editor and reloading list');
+          setEditingTemplateId(null);
           await loadTemplates();
-          const updatedTemplates = templates;
-          const updatedTemplate = updatedTemplates.find(t =>
-            t.name === currentEditingTemplate.name ||
-            t.id === currentEditingTemplate.id ||
-            t.sourceIssueKey === currentEditingTemplate.sourceIssueKey
-          );
-          if (updatedTemplate) {
-            setEditingTemplateId(updatedTemplate.id);
-          }
         }}
       />
     );

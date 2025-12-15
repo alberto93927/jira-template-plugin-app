@@ -189,12 +189,6 @@ forge tunnel
 - [ ] Apply template to existing issues
 - [ ] Save existing issue as template
 
-## Troubleshooting
-
-See [DEBUG_GUIDE.md](./DEBUG_GUIDE.md) for detailed debugging information.
-
-See [SETUP_INSTRUCTIONS.md](./SETUP_INSTRUCTIONS.md) for detailed setup instructions.
-
 ## Support
 
 See [Get help](https://developer.atlassian.com/platform/forge/get-help/) for how to get help and provide feedback.
