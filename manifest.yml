@@ -6,44 +6,32 @@ app:
   id: ari:cloud:ecosystem::app/b6bf3657-5548-4b16-87f7-22af6aed136b
 
 modules:
-  jira:uiModifications:
-    - key: tmpl-create-uim
-      title: Template prefill
-      resource: uim
+  jira:issueAction:
+    - key: tmpl-apply
+      title: Apply template…
+      resource: main
+      resolver: { function: resolver }
       render: native
-      trigger:
-        - event: VIEW_CREATED
-      view:
-        - GIC
+    - key: tmpl-save
+      title: Save as template…
+      resource: main
+      resolver: { function: resolver }
+      render: native
 
-  jira:customFieldType:
-    - key: template-selector-field
-      name: Template-v2
-      description: Pick a template to prefill fields
-      type: string
-      view:
-        render: native
-        resource: main
-        experience:
-          - issue-view
-          - portal-view
-      edit:
-        resource: edit
-        render: native
-        isInline: true
-        experience:
-          - issue-create
-          - issue-transition
-          - issue-view
-          - portal-request
+  jira:projectPage:
+    - key: tmpl-project-library
+      title: Team Template Library
+      resource: main
+      resolver: { function: resolver }
+      render: native
+
+  function:
+    - key: resolver
+      handler: resolvers/index.handler
 
 resources:
   - key: main
     path: src/frontend/index.jsx
-  - key: edit
-    path: src/frontend/TemplateSelector.jsx
-  - key: uim
-    path: src/uim/index.js
 
 permissions:
   scopes:

@@ -46,8 +46,8 @@ pnpm-debug.log*
 *.p12
 
 # --- Build artifacts & caches ---
-dist/
-build/
+# dist/
+# build/
 .out/
 .cache/
 .eslintcache
